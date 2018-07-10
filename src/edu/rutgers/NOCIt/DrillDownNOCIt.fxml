@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="475.0" prefWidth="800.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="edu.rutgers.NOCIt.DrillDownNOCItController">
+  <children>
+    <Label fx:id="calibrationLabel" layoutX="327.0" layoutY="25.0" text="Calibration:" />
+    <ChoiceBox fx:id="calibrationsBox" layoutX="435.0" layoutY="17.0" prefHeight="31.0" prefWidth="232.0" />
+    <Label fx:id="outputFolderLabel" layoutX="327.0" layoutY="65.0" text="Output Folder:" />
+    <TextField fx:id="outputFolderField" editable="false" layoutX="435.0" layoutY="57.0" prefHeight="31.0" prefWidth="232.0" />
+    <Button fx:id="chooseOutputFileButton" layoutX="689.0" layoutY="57.0" mnemonicParsing="false" onAction="#chooseOutputFile" prefHeight="31.0" prefWidth="97.0" text="Browse" />
+    <Label fx:id="csvOutputFileLabel" layoutX="327.0" layoutY="105.0" text="CSV Output File:" />
+    <TextField fx:id="csvOutputFileField" editable="false" layoutX="435.0" layoutY="97.0" prefHeight="31.0" prefWidth="232.0" />
+    <Button fx:id="csvOutputFileButton" layoutX="689.0" layoutY="97.0" mnemonicParsing="false" onAction="#chooseCSVOutputFile" prefHeight="31.0" prefWidth="97.0" text="Browse" />
+    <Label fx:id="includeResultsAsCSVLabel" layoutX="327.0" layoutY="145.0" text="Include Results as CSV:" />
+    <CheckBox fx:id="writeCSV" layoutX="483.0" layoutY="145.0" mnemonicParsing="false" onAction="#writeCSVAction" />
+    <Label fx:id="maxNOCLabel" layoutX="328.0" layoutY="185.0" text="Max # of Contributors:" />
+    <ChoiceBox fx:id="numberOfContribs" layoutX="483.0" layoutY="180.0" prefHeight="31.0" prefWidth="68.0" />
+    <Label fx:id="filterLabel" layoutX="328.0" layoutY="225.0" text="Filter:" />
+    <CheckBox fx:id="isFiltered" layoutX="391.0" layoutY="225.0" mnemonicParsing="false" />
+    <ScrollPane hbarPolicy="NEVER" layoutX="328.0" layoutY="289.0" prefHeight="126.0" prefViewportHeight="60.0" prefViewportWidth="447.0" prefWidth="449.0" vbarPolicy="ALWAYS">
+      <content>
+        <VBox fx:id="populationList" prefHeight="123.0" prefWidth="447.0" style="-fx-border-width: 1; -fx-border-style: solid;" />
+      </content>
+    </ScrollPane>
+    <Button fx:id="addBatchButton" layoutX="368.0" mnemonicParsing="false" onAction="#processAndAddBatch" text="Add Batch" AnchorPane.bottomAnchor="14.0" />
+    <Label fx:id="populationsLabel" layoutX="328.0" layoutY="265.0" text="Populations:" />
+    <Button fx:id="addSampleFilesButton" layoutX="33.0" mnemonicParsing="false" onAction="#addNewSampleFiles" prefWidth="195.0" text="Add New Sample File(s)" AnchorPane.topAnchor="23.0" />
+    <Button fx:id="clearAllButton" layoutX="243.0" mnemonicParsing="false" onAction="#clearAllSampleFiles" text="Clear All" AnchorPane.topAnchor="23.0" />
+    <ScrollPane layoutX="26.0" layoutY="68.0" prefHeight="345.0" prefViewportHeight="333.0" prefViewportWidth="277.0" vbarPolicy="ALWAYS">
+      <content>
+        <VBox fx:id="samples" prefHeight="342.0" prefWidth="277.0" style="-fx-border-width: 1; -fx-border-style: solid;" />
+      </content>
+    </ScrollPane>
+    <Button fx:id="thresholdsButton" layoutX="84.0" mnemonicParsing="false" onAction="#setAnalyticalThresholds" text="Analytical Thresholds" visible="false" AnchorPane.bottomAnchor="14.0" />
+    <!--<Button fx:id="thresholdsButton" layoutX="655.0" layoutY="68.0" mnemonicParsing="false" onAction="#setAnalyticalThresholds" prefHeight="31.0" prefWidth="133.0" text="Analytical Thresholds" visible="false">
+         <font>
+            <Font size="12.0" />
+         </font>
+      </Button>-->
+  </children>
+</AnchorPane>

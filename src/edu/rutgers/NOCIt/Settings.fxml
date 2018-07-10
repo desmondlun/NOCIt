@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<AnchorPane id="AnchorPane" prefHeight="600.0" prefWidth="534.0" xmlns="http://javafx.com/javafx/9.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="edu.rutgers.NOCIt.SettingsController">
+   <children>
+      <TabPane fx:id="tabPane" layoutX="237.0" layoutY="83.0" prefHeight="500.0" prefWidth="534.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+        <tabs>
+          <Tab fx:id="tabGeneralSettings" text="General">
+            <content>
+              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+              	<children>
+        			<TextField fx:id="sampleIDDelimiterField" layoutX="300.0" layoutY="46.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="sampleIDDelimiterLabel" layoutX="30.0" layoutY="50.0" text="Sample ID Delimiter" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="50.0" />
+        			
+        			<TextField fx:id="genotypeIDIndexField" layoutX="300.0" layoutY="96.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="genotypeIDIndexLabel" layoutX="30.0" layoutY="100.0" text="Genotype ID Index" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="100.0" />
+        			
+        			<ChoiceBox fx:id="maxNumberProcessorsField" layoutX="300.0" layoutY="146.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="maxNumberProcessorsLabel" layoutX="30.0" layoutY="150.0" text="Max. # of Processors" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="150.0" />
+        			
+        			<Label fx:id="plotAllPointsLabel" layoutX="30.0" layoutY="200.0" text="Plot all Calibration Graph Points:" />
+    				<CheckBox fx:id="plotAllPointsCheckBox" layoutX="300.0" layoutY="196.0" mnemonicParsing="false" onAction="#plotAllPointsAction" AnchorPane.leftAnchor="300.0" />
+    				
+    				<TextField fx:id="maxNumberPointsField" layoutX="300.0" layoutY="246.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="maxNumberPointsLabel" layoutX="30.0" layoutY="250.0" text="Max. # of Calibration Graph Points" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="250.0" />
+    				
+    				<Button fx:id="resetToDefaultGeneralButton" layoutX="110.0" layoutY="505.0" mnemonicParsing="false" onAction="#resetToDefaultGeneral" prefHeight="25.0" prefWidth="140" text="Reset to Default" />
+              		<Button fx:id="settingsSaveCloseGeneralButton" layoutX="300.0" layoutY="505.0" mnemonicParsing="false" onAction="#settingsSaveClose" prefHeight="25.0" prefWidth="140" text="Save and Close" />	
+              	</children>
+              </AnchorPane>
+            </content>
+          </Tab>
+          <Tab fx:id="tabFilterSettings" text="CleanIt">
+            <content>
+              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="425.0" prefWidth="534.0">
+              	<children>
+              		<TextField fx:id="pullUpHeightRatioField" layoutX="300.0" layoutY="46.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="pullUpHeightRatioLabel" layoutX="30.0" layoutY="50.0" text="Pull-up Height Ratio" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="50.0" />
+        			<Label layoutX="486.0" layoutY="50.0" text="\%" AnchorPane.leftAnchor="481.0" AnchorPane.topAnchor="50.0" />
+        			
+        			<TextField fx:id="pullUpSizeRangeField" layoutX="300.0" layoutY="96.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="pullUpSizeRangeLabel" layoutX="30.0" layoutY="100.0" text="Pull-up Size Range" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="100.0" />
+        			<Label layoutX="481.0" layoutY="100.0" text="+/-" AnchorPane.leftAnchor="481.0" AnchorPane.topAnchor="100.0" />
+        			
+        			<TextField fx:id="complexPullUpHeightRatioField" layoutX="300.0" layoutY="146.0" prefWidth="135.0" />	
+                    <TextField fx:id="complexPullUpSisterHeightRatioField" layoutX="300.0" layoutY="196.0" prefWidth="135.0" />
+                    <TextField fx:id="complexPullUpSizeRangeField" layoutX="300.0" layoutY="246.0" prefWidth="135.0" />
+                    <Label fx:id="complexPullUpHeightRatioLabel" layoutX="30.0" layoutY="150.0" text="Complex Pull-up Height Ratio" />
+                    <Label fx:id="complexPullUpSisterHeightRatioLabel" layoutX="30.0" layoutY="200.0" text="Complex Pull-up Sister Height Ratio" />
+                    <Label fx:id="complexPullUpSizeRangeLabel" layoutX="30.0" layoutY="250.0" text="Complex Pull-up Size Range" />
+                    <Label layoutX="481.0" layoutY="250.0" text="+/-" />
+                    <Label layoutX="481.0" layoutY="200.0" text="\%" />
+                    <Label layoutX="481.0" layoutY="300.0" text="\%" />
+        			
+        			<TextField fx:id="minusAPeakHeightRatioField" layoutX="300.0" layoutY="296.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="minusAPeakHeightRatioLabel" layoutX="30.0" layoutY="300.0" text="Minus-A Height Ratio" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="300.0" />
+        			<Label layoutX="486.0" layoutY="150.0" text="\%" AnchorPane.leftAnchor="481.0" AnchorPane.topAnchor="150.0" />
+        			
+        			<TextField fx:id="minusAPeakSizeRangeField" layoutX="300.0" layoutY="346.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="minusAPeakSizeRangeLabel" layoutX="30.0" layoutY="350.0" text="Minus-A Size Range" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="350.0" />
+        			<Label layoutX="481.0" layoutY="350.0" text="+/-" AnchorPane.leftAnchor="481.0" AnchorPane.topAnchor="350.0" />
+              	
+              		<Button fx:id="resetToDefaultFilterButton" layoutX="110.0" layoutY="505.0" mnemonicParsing="false" onAction="#resetToDefaultFilter" prefHeight="25.0" prefWidth="140" text="Reset to Default" />
+              		<Button fx:id="settingsSaveCloseFilterButton" layoutX="300.0" layoutY="505.0" mnemonicParsing="false" onAction="#settingsSaveClose" prefHeight="25.0" prefWidth="140" text="Save and Close" />   
+              	</children>
+              </AnchorPane>
+            </content>
+          </Tab>
+          <Tab fx:id="tabNOCItSettings" text="NOCIt">
+            <content>
+              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+              	<children>
+              		<TextField fx:id="thetaNumLevelsField" layoutX="300.0" layoutY="46.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="thetaNumLevelsLabel" layoutX="30.0" layoutY="50.0" text="Levels for Mixture Ratios" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="50.0" />
+        			
+        			<TextField fx:id="nocItStdErrorTolField" layoutX="300.0" layoutY="96.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="nocItStdErrorTolLabel" layoutX="30.0" layoutY="100.0" text="Standard Error Tolerance" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="100.0" />
+        			
+        			<TextField fx:id="nocItTimeLimitField" layoutX="300.0" layoutY="146.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="nocItTimeLimitLabel" layoutX="30.0" layoutY="150.0" text="Refinement Time Limit" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="150.0" />
+        			<Label layoutX="486.0" layoutY="150.0" text="s" AnchorPane.leftAnchor="481.0" AnchorPane.topAnchor="150.0" />
+        			
+        			<TextField fx:id="numSamples1Field" layoutX="300.0" layoutY="196.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="numSamples1Label" layoutX="30.0" layoutY="200.0" text="# Samples in Batch for NOC = 1" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="200.0" />
+              	
+              		<TextField fx:id="numSamplesIncField" layoutX="300.0" layoutY="246.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="multFactorLabel" layoutX="30.0" layoutY="250.0" text="Multiplicative Factor" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="250.0" />
+        			
+        			<TextField fx:id="maxNumSamplesField" layoutX="300.0" layoutY="296.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="maxSamplesLabel" layoutX="30.0" layoutY="300.0" text="Maximum # Samples in Batch" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="300.0" />
+              	
+              		<Button fx:id="resetToDefaultNOCItButton" layoutX="110.0" layoutY="505.0" mnemonicParsing="false" onAction="#resetToDefaultNOCIt" prefHeight="25.0" prefWidth="140" text="Reset to Default" />
+              		<Button fx:id="settingsSaveCloseNOCItButton" layoutX="300.0" layoutY="505.0" mnemonicParsing="false" onAction="#settingsSaveClose" prefHeight="25.0" prefWidth="140" text="Save and Close" />
+              	</children>
+              </AnchorPane>
+            </content>
+          </Tab>
+          <Tab fx:id="tabCEESItSettings" text="CEESIt">
+            <content>
+              <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+              	<children>
+              		<TextField fx:id="thetaNumLevelsCEESItField" layoutX="300.0" layoutY="46.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="thetaNumLevelsCEESItLabel" layoutX="30.0" layoutY="50.0" text="Levels for Mixture Ratios" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="50.0" />
+              	
+              		<TextField fx:id="binWidthField" layoutX="300.0" layoutY="96.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="binWidthLabel" layoutX="30.0" layoutY="100.0" text="Minimum Bin Width" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="100.0" />
+        			
+        			<TextField fx:id="numBinsField" layoutX="300.0" layoutY="146.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="numBinsLabel" layoutX="30.0" layoutY="150.0" text="Maximum Number of Bins" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="150.0" />
+              	
+              		<TextField fx:id="numSamples1CEESItField" layoutX="300.0" layoutY="196.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="numSamples1CEESItLabel" layoutX="30.0" layoutY="200.0" text="# Samples in Batch for NOC = 1" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="200.0" />
+              	
+              		<TextField fx:id="numSamplesIncCEESItField" layoutX="300.0" layoutY="246.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="multFactorCEESItLabel" layoutX="30.0" layoutY="250.0" text="Multiplicative Factor" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="250.0" />
+              	
+              		<TextField fx:id="poiSamplesField" layoutX="300.0" layoutY="296.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="poiSamplesLabel" layoutX="30.0" layoutY="300.0" text="POI Samples" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="300.0" />
+        			
+        			<TextField fx:id="genotypeToleranceField" layoutX="300.0" layoutY="346.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="genotypeToleranceLabel" layoutX="30.0" layoutY="350.0" text="Genotype Tolerance" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="350.0" />
+        			
+        			<TextField fx:id="popSubstructureAdjField" layoutX="300.0" layoutY="396.0" prefWidth="135.0" AnchorPane.leftAnchor="300.0" />
+        			<Label fx:id="popSubstructureAdjLabel" layoutX="30.0" layoutY="400.0" text="Population Substructure" AnchorPane.leftAnchor="30.0" AnchorPane.topAnchor="400.0" />
+        			
+        			<Button fx:id="resetToDefaultCEESItButton" layoutX="110.0" layoutY="505.0" mnemonicParsing="false" onAction="#resetToDefaultCEESIt" prefHeight="25.0" prefWidth="140" text="Reset to Default" />
+              		<Button fx:id="settingsSaveCloseCEESItButton" layoutX="300.0" layoutY="505.0" mnemonicParsing="false" onAction="#settingsSaveClose" prefHeight="25.0" prefWidth="140" text="Save and Close" />
+        		</children>
+              </AnchorPane>
+            </content>
+          </Tab>
+        </tabs>
+      </TabPane>
+   </children>
+</AnchorPane>

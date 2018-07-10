@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane id="AnchorPane" prefHeight="400.0" prefWidth="600.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/2.2" fx:controller="edu.rutgers.NOCIt.PopulationManagerController">
+  <children>
+    <TextField fx:id="frequencyName" layoutX="206.0" layoutY="10.0" prefWidth="180.0" promptText="Enter population name" />
+    <Label layoutX="81.0" layoutY="15.0" text="Population Name:" />
+    <TextField fx:id="frequencyFileName" editable="false" layoutX="206.0" AnchorPane.topAnchor="48.0" prefWidth="180.0" promptText="Please select a file ---&gt;" />
+    <Label layoutX="81.0" text="Frequency File:" AnchorPane.topAnchor="53.0" />
+    <Button fx:id="browseButton" layoutX="434.0" mnemonicParsing="false" onAction="#chooseFrequencyFile" text="Browse" AnchorPane.topAnchor="48.0" />
+    <Label layoutX="81.0" text="Number of People:" AnchorPane.topAnchor="90.0" />
+    <TextField fx:id="numberOfPeople" layoutX="206.0" AnchorPane.topAnchor="85.0" prefWidth="180.0" promptText="Enter the number of people" />
+    <Button layoutX="240.0" layoutY="121.0" mnemonicParsing="false" onAction="#addNewFrequency" text="Add Population" />
+    <ScrollPane layoutX="50.0" layoutY="161.0" prefHeight="187.0" prefViewportHeight="184.0" prefViewportWidth="500.0">
+      <content>
+        <VBox fx:id="frequencies" prefHeight="184.0" prefWidth="500.0" style="-fx-border-width: 0; -fx-border-style: solid;" />
+      </content>
+    </ScrollPane>
+    <Button fx:id="okButton" layoutX="268.0" layoutY="360.0" mnemonicParsing="false" onAction="#closeDialog" text="OK" />
+  </children>
+</AnchorPane>
