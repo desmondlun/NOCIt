@@ -206,9 +206,6 @@ public class Settings {
 	/** The genotype ID index. */
 	public static int genotypeIDIndex = defaultGenotypeIDIndex;
 
-	/** The minimum number of counts for an allele in frequency distribution. */
-	public static int minCount = 5;
-
 	// NOCIt settings
 	/** The number of discretization levels for mixture ratios. */
 	public static int thetaNumLevels = defaultThetaNumLevels;

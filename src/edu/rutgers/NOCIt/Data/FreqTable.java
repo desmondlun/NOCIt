@@ -83,28 +83,24 @@ public class FreqTable {
 		maxHashCode = 0;
 		for (Locus locus : freqDists.keySet()) {
 			HashMap<STRAllele, Integer> freqDist = new HashMap<>(freqDists.get(locus));
-			
-			for (STRAllele allele : freqDist.keySet()) 
-				if (freqDist.get(allele) < Settings.minCount)
-					freqDist.put(allele, Settings.minCount);
 				
 			if (kit != null)
 				for (Allele allele : kit.getAlleles(locus))
 					if (!freqDist.containsKey(allele))
-						freqDist.put((STRAllele) allele, Settings.minCount);
+						freqDist.put((STRAllele) allele, 0);
 			
 			if (sample != null && sample.getLociData().containsKey(locus))
 				for (Allele allele : sample.getLociData().get(locus).getPeaks().keySet())
 					if (!freqDist.containsKey(allele))
-						freqDist.put((STRAllele) allele, Settings.minCount);
-
+						freqDist.put((STRAllele) allele, 0);
+			
 			int totalFreq = 0;
 			for (STRAllele allele : freqDist.keySet()) 
 				totalFreq += freqDist.get(allele);
 			
 			HashMap<STRAllele, Double> probDist = new HashMap<>();
 			for (STRAllele allele : freqDist.keySet()) {
-				probDist.put(allele, ((double) freqDist.get(allele)) / totalFreq);
+				probDist.put(allele, (freqDist.get(allele) + 1.0 / freqDist.size()) / (totalFreq + 1.0));
 				
 				if (allele.fStutterAllele().hashCode() > maxHashCode)
 					maxHashCode = allele.fStutterAllele().hashCode();
