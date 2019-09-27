@@ -22,7 +22,7 @@ import edu.rutgers.NOCIt.Control.Settings;
 public class Sample {
     private static final int MIN_HEIGHT = 1;
     private static final int THETA1_SIZE = 200;
-    private static final double[] REL_THETA_UNIVERSE = { 1.0, 2.0 };
+    private static final int NUM_DIFF_DEG_LEVELS = 2;
     
 	private HashMap<String, ArrayList<LocusData>> dyeData = new LinkedHashMap<String, ArrayList<LocusData>>();
 	private HashMap<Locus, LocusData> lociData = new LinkedHashMap<Locus, LocusData>();
@@ -357,12 +357,11 @@ public class Sample {
     	HashMap<double[], HashMap<Locus, double[][]>> relThetaParamsMap = new HashMap<>();
     	
     	int noc = theta0.length;
-    	for (int i1 = 0; i1 < FastMath.pow(REL_THETA_UNIVERSE.length, noc); i1++) {
+    	for (int i1 = 0; i1 < FastMath.pow(NUM_DIFF_DEG_LEVELS, noc); i1++) {
         	double[] relTheta = new double[noc - 1];
     		for (int j = 0; j < noc - 1; j++) 
-    			relTheta[j] = REL_THETA_UNIVERSE[(i1 / ((int) FastMath.pow(REL_THETA_UNIVERSE.length, j + 1))) 
-    			                                 % REL_THETA_UNIVERSE.length]
-    			                                		 / REL_THETA_UNIVERSE[i1 % REL_THETA_UNIVERSE.length];    		
+    			relTheta[j] = ((i1 / ((int) FastMath.pow(NUM_DIFF_DEG_LEVELS, j + 1))) % NUM_DIFF_DEG_LEVELS + 1.0) 
+    							/ (i1 % NUM_DIFF_DEG_LEVELS + 1.0);    		
 
     		boolean allOnes = true;
     		for (int j = 0; j < noc - 1; j++)
