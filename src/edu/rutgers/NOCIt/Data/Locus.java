@@ -12,7 +12,7 @@ public class Locus implements Serializable {
 	
 	private String name;
 	private int locusValue;
-	private String dye;
+	private String dye = "";
 	
 	/**
 	 * This constructor will be used in all other cases but when data fetching data from database

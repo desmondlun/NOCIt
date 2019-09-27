@@ -156,7 +156,10 @@ public class DrillDownCEESItController implements Initializable {
     	SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     	String dateString = sdf.format(myDate);
     	
-    	ObservableList<String> nocChoiceList = FXCollections.observableArrayList(Constants.CEESIT_NOC_DROPDOWN_OPTIONS);
+    	String[] nocDropdownOptions = new String[Constants.CEESIT_MAX_NOC_CHOICE];
+		for (int i = 0; i < nocDropdownOptions.length; i++)
+			nocDropdownOptions[i] = Integer.toString(i + 1);	
+    	ObservableList<String> nocChoiceList = FXCollections.observableArrayList(nocDropdownOptions);
     	numberOfContribs.setItems(nocChoiceList);
     	if (Settings.lastCEESItNOCSelection != null && nocChoiceList.contains(Settings.lastCEESItNOCSelection)) {
     		numberOfContribs.getSelectionModel().select(nocChoiceList.indexOf(Settings.lastCEESItNOCSelection));

@@ -257,7 +257,9 @@ public class CSVModule {
 				for (Locus locus : sample.getLoci()) {
 					line += sampleNames.get(i) + "\t";
 					line += locus.toString() + "\t";
-					line += locus.getDye().substring(0, 1) + "\t";
+					if (locus.getDye() != null)
+						line += locus.getDye().substring(0, 1);
+					line += "\t";
 					LocusData locusData = sample.getLociData().get(locus);
 					ArrayList<Allele> alleleList = new ArrayList<Allele>(locusData.getPeaks().keySet());
 					ArrayList<String> sortedAlleleNames = locusData.sortedAllelesByName(alleleList);

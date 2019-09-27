@@ -716,16 +716,24 @@ public class UIController implements Initializable {
 	 * This function autosaves the current progress in the application. The
 	 * autosave file will automatically be loaded next time the application is
 	 * launched.
+	 * @throws IOException 
 	 */
 	public void autoSave() {
-		File file = new File(Settings.getSettingsPath() + "/" + Constants.AUTOSAVE_FILENAME);
-		if (!autosaveLoaded) {
-			CalibrationProjectHandler.saveCalibrationProject(file, this);
-		} else {
-			CalibrationProjectHandler.unZipIt(Settings.getSettingsPath() + "/" + Constants.AUTOSAVE_FILENAME,
-					Settings.getSettingsPath(), this);
-			CalibrationProjectHandler.saveCalibrationProject(file, this);
-		}
+		try {
+			File file = new File(Settings.getSettingsPath() + "/" + Constants.AUTOSAVE_FILENAME);
+			if (!autosaveLoaded) {
+				CalibrationProjectHandler.saveCalibrationProject(file, this);
+
+			} else {
+				CalibrationProjectHandler.unZipIt(Settings.getSettingsPath() + "/" + Constants.AUTOSAVE_FILENAME,
+						Settings.getSettingsPath(), this);
+				CalibrationProjectHandler.saveCalibrationProject(file, this);
+			}
+		} catch (IOException e) {
+			Alert alert = new Alert(AlertType.ERROR, Constants.CALIBRATION_SAVE_ERROR);
+			alert.showAndWait();
+			logger.error(Constants.CALIBRATION_SAVE_ERROR, e);
+		}			
 	}
 
 	/**
@@ -897,7 +905,6 @@ public class UIController implements Initializable {
 							try {
 								((SimpleStringProperty) rows.get(i).get(4)).set(Constants.DEFAULT_CHOOSE);
 							} catch (Exception e) {
-								// e.printStackTrace();
 								logger.error("Error deleting genotype", e);
 							}
 						}
@@ -929,8 +936,7 @@ public class UIController implements Initializable {
 						calibrationTable.getColumns().clear();
 						calibrationTable.getColumns().addAll(columnList);
 					} catch (Exception e) {
-						// e.printStackTrace();
-						// logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
+						logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
 					}
 				}
 			}
@@ -1166,8 +1172,11 @@ public class UIController implements Initializable {
 				}
 			}
 		});
-		ObservableList<String> nocChoiceList = FXCollections
-				.observableArrayList(Arrays.asList(Constants.CEESIT_NOC_DROPDOWN_OPTIONS));
+		
+		String[] nocDropdownOptions = new String[Constants.CEESIT_MAX_NOC_CHOICE];
+		for (int i = 0; i < nocDropdownOptions.length; i++)
+			nocDropdownOptions[i] = Integer.toString(i + 1);		
+		ObservableList<String> nocChoiceList = FXCollections.observableArrayList(nocDropdownOptions);
 		// Please leave this here as a reminder of how to set a default combo box table cell
 		//nocColumn.setCellFactory(ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(nocChoiceList));
 		nocColumn.setCellFactory(col -> {
@@ -1230,44 +1239,50 @@ public class UIController implements Initializable {
 					File file = fileChooser.showOpenDialog(stage);
 
 					if (file != null) {
-						if (!FileChecker.isValidCalibrationProjectFile(file.getAbsolutePath())) {
-							UIController.displayErrorDialog("File Validation",
-									"This is not a valid Calibration Project file: \r\n\r\n" + file.getAbsolutePath());
-							((SimpleStringProperty) ceesItTable.getItems()
-									.get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set("<wdw>");
-							((SimpleStringProperty) ceesItTable.getItems()
-									.get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(oldValue);
-							return;
-						}
-						Project project = CalibrationProjectHandler.loadProjectData(file);
-						if (project.getCalibration() != null) {
-							String name = file.getName().split("\\.")[0];
-							updateCalibrationOptions(name, project.getCalibration());
+						try {
+							if (!FileChecker.isValidCalibrationProjectFile(file.getAbsolutePath())) {
+								UIController.displayErrorDialog("File Validation",
+										"This is not a valid Calibration Project file: \r\n\r\n" + file.getAbsolutePath());
+								((SimpleStringProperty) ceesItTable.getItems()
+										.get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set("<wdw>");
+								((SimpleStringProperty) ceesItTable.getItems()
+										.get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(oldValue);
+								return;
+							}
+							Project project = CalibrationProjectHandler.loadProjectData(file);
+							if (project.getCalibration() != null) {
+								String name = file.getName().split("\\.")[0];
+								updateCalibrationOptions(name, project.getCalibration());
 
-							ObservableList<String> calibrationChoiceList = createCalibrationChoiceList();
-							calibrationColumn.setCellFactory(
-									ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(calibrationChoiceList));
+								ObservableList<String> calibrationChoiceList = createCalibrationChoiceList();
+								calibrationColumn.setCellFactory(
+										ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(calibrationChoiceList));
 
-							Settings.lastCalibrationPath = file.getParent();
-							Settings.save();
-							((SimpleStringProperty) ceesItTable.getItems()
-									.get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(name);
-							
-							ObservableList<?> rowList = (ObservableList<?>) ceesItTable.getItems()
-									.get(cellEditEvent.getTablePosition().getRow());
-							updateCEESItATsForSelectedCalibration(project.getCalibration(), rowList);
-							String outputName = ((SimpleStringProperty) rowList
-									.get(Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX)).get();
-							if (!userSelectedCEESItOutputFilePaths.contains(outputName)) {
-								UtilityMethods.updateCEESItOutputName(ceesItTable, rowList,
-										cellEditEvent.getTablePosition().getRow());
-								if (!value.equals(oldValue) && startCEESItButtonClicked) {
-									ceesItEditRowAction(rowList, Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX);
+								Settings.lastCalibrationPath = file.getParent();
+								Settings.save();
+								((SimpleStringProperty) ceesItTable.getItems()
+										.get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.CEESIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(name);
+
+								ObservableList<?> rowList = (ObservableList<?>) ceesItTable.getItems()
+										.get(cellEditEvent.getTablePosition().getRow());
+								updateCEESItATsForSelectedCalibration(project.getCalibration(), rowList);
+								String outputName = ((SimpleStringProperty) rowList
+										.get(Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX)).get();
+								if (!userSelectedCEESItOutputFilePaths.contains(outputName)) {
+									UtilityMethods.updateCEESItOutputName(ceesItTable, rowList,
+											cellEditEvent.getTablePosition().getRow());
+									if (!value.equals(oldValue) && startCEESItButtonClicked) {
+										ceesItEditRowAction(rowList, Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX);
+									}
 								}
 							}
+						} catch (ClassNotFoundException | IOException e) {
+							Alert alert = new Alert(AlertType.ERROR, Constants.CALIBRATION_LOAD_ERROR);
+							alert.showAndWait();
+							logger.error(Constants.CALIBRATION_LOAD_ERROR, e);
 						}
 					} else {
 						((SimpleStringProperty) ceesItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
@@ -1660,7 +1675,6 @@ public class UIController implements Initializable {
 						ceesItTable.getColumns().clear();
 						ceesItTable.getColumns().addAll(columnList);
 					} catch (Exception e) {
-						// e.printStackTrace();
 						logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
 					}
 				}
@@ -1958,8 +1972,11 @@ public class UIController implements Initializable {
 				}
 			}
 		});
-		ObservableList<String> nocChoiceList = FXCollections
-				.observableArrayList(Arrays.asList(Constants.NOCIT_NOC_DROPDOWN_OPTIONS));
+		
+		String[] nocDropdownOptions = new String[Constants.NOCIT_MAX_NOC_CHOICE];
+		for (int i = 0; i < nocDropdownOptions.length; i++)
+			nocDropdownOptions[i] = Integer.toString(i + 1);		
+		ObservableList<String> nocChoiceList = FXCollections.observableArrayList(nocDropdownOptions);
 		nocColumn.setCellFactory(ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(nocChoiceList));
 		columnList.add(nocColumn);
 
@@ -1998,42 +2015,48 @@ public class UIController implements Initializable {
 					File file = fileChooser.showOpenDialog(stage);
 
 					if (file != null) {
-						if (!FileChecker.isValidCalibrationProjectFile(file.getAbsolutePath())) {
-							UIController.displayErrorDialog("File Validation",
-									"This is not a valid Calibration Project file: \r\n\r\n" + file.getAbsolutePath());
-							((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set("<wdw>");
-							((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(oldValue);
-							return;
-						}
-						Project project = CalibrationProjectHandler.loadProjectData(file);
-						if (project.getCalibration() != null) {
-							String name = file.getName().split("\\.")[0];
-							updateCalibrationOptions(name, project.getCalibration());
+						try {
+							if (!FileChecker.isValidCalibrationProjectFile(file.getAbsolutePath())) {
+								UIController.displayErrorDialog("File Validation",
+										"This is not a valid Calibration Project file: \r\n\r\n" + file.getAbsolutePath());
+								((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set("<wdw>");
+								((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(oldValue);
+								return;
+							}
+							Project project = CalibrationProjectHandler.loadProjectData(file);
+							if (project.getCalibration() != null) {
+								String name = file.getName().split("\\.")[0];
+								updateCalibrationOptions(name, project.getCalibration());
 
-							ObservableList<String> calibrationChoiceList = createCalibrationChoiceList();
-							calibrationColumn.setCellFactory(
-									ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(calibrationChoiceList));
+								ObservableList<String> calibrationChoiceList = createCalibrationChoiceList();
+								calibrationColumn.setCellFactory(
+										ComboBoxTableCell.<ObservableList<?>, String>forTableColumn(calibrationChoiceList));
 
-							Settings.lastCalibrationPath = file.getParent();
-							Settings.save();
-							((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
-									.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(name);
+								Settings.lastCalibrationPath = file.getParent();
+								Settings.save();
+								((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
+										.get(Constants.NOCIT_TABLE_COLUMN_CALIBRATION_INDEX)).set(name);
 
-							ObservableList rowList = (ObservableList) nocItTable.getItems()
-									.get(cellEditEvent.getTablePosition().getRow());
-							updateNOCItATsForSelectedCalibration(project.getCalibration(), rowList);
-							String outputName = ((SimpleStringProperty) rowList
-									.get(Constants.NOCIT_TABLE_COLUMN_OUTPUT_INDEX)).get();
-							if (!userSelectedNOCItOutputFilePaths.contains(outputName)) {
-								UtilityMethods.updateNOCItOutputName(nocItTable, rowList,
-										cellEditEvent.getTablePosition().getRow());
-								if (!value.equals(oldValue) && startNOCItButtonClicked) {
-									clearNOCItFileLists();
-									nocItTable.refresh();
+								ObservableList rowList = (ObservableList) nocItTable.getItems()
+										.get(cellEditEvent.getTablePosition().getRow());
+								updateNOCItATsForSelectedCalibration(project.getCalibration(), rowList);
+								String outputName = ((SimpleStringProperty) rowList
+										.get(Constants.NOCIT_TABLE_COLUMN_OUTPUT_INDEX)).get();
+								if (!userSelectedNOCItOutputFilePaths.contains(outputName)) {
+									UtilityMethods.updateNOCItOutputName(nocItTable, rowList,
+											cellEditEvent.getTablePosition().getRow());
+									if (!value.equals(oldValue) && startNOCItButtonClicked) {
+										clearNOCItFileLists();
+										nocItTable.refresh();
+									}
 								}
 							}
+						} catch (ClassNotFoundException | IOException e) {
+							Alert alert = new Alert(AlertType.ERROR, Constants.CALIBRATION_LOAD_ERROR);
+							alert.showAndWait();
+							logger.error(Constants.CALIBRATION_LOAD_ERROR, e);
 						}
 					} else {
 						((SimpleStringProperty) nocItTable.getItems().get(cellEditEvent.getTablePosition().getRow())
@@ -2292,7 +2315,6 @@ public class UIController implements Initializable {
 						nocItTable.getColumns().clear();
 						nocItTable.getColumns().addAll(columnList);
 					} catch (Exception e) {
-						// e.printStackTrace();
 						logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
 					}
 				}
@@ -2565,7 +2587,6 @@ public class UIController implements Initializable {
 						treeTableView.getColumns().clear();
 						treeTableView.getColumns().addAll(columnList);
 					} catch (Exception e) {
-						// e.printStackTrace();
 						logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
 					}
 				}
@@ -2909,7 +2930,13 @@ public class UIController implements Initializable {
 	 */
 	@FXML
 	private void calibrationSaveClicked(ActionEvent event) {
-		saveCalibration();
+		try {
+			saveCalibration();
+		} catch (IOException e) {
+			Alert alert = new Alert(AlertType.ERROR, Constants.CALIBRATION_SAVE_ERROR);
+			alert.showAndWait();
+			logger.error(Constants.CALIBRATION_SAVE_ERROR, e);
+		}
 	}
 
 	/**
@@ -3010,7 +3037,6 @@ public class UIController implements Initializable {
 			} catch (Exception e) {
 				Alert alert = new Alert(AlertType.ERROR, Constants.LOAD_BINS_FILE_ERROR_MESSAGE);
 				alert.showAndWait();
-				// e.printStackTrace();
 				logger.error(Constants.LOAD_BINS_FILE_ERROR_LOG_MESSAGE, e);
 			}
 		}
@@ -3151,7 +3177,6 @@ public class UIController implements Initializable {
 					showSaveChangesPrompt = true;
 				}
 			} catch (Exception e) {
-				// e.printStackTrace();
 				Alert alert = new Alert(AlertType.ERROR, Constants.LOAD_SAMPLE_FILES_ERROR_MESSAGE);
 				alert.showAndWait();
 				logger.error(Constants.LOAD_SAMPLE_FILES_ERROR_LOG_MESSAGE, e);
@@ -3208,7 +3233,13 @@ public class UIController implements Initializable {
 			Optional<ButtonType> result = alert.showAndWait();
 
 			if (result.isPresent() && result.get() == ButtonType.YES) {
-				saveCalibration();
+				try {
+					saveCalibration();
+				} catch (IOException e) {
+					alert = new Alert(AlertType.ERROR, Constants.CALIBRATION_SAVE_ERROR);
+					alert.showAndWait();
+					logger.error(Constants.CALIBRATION_SAVE_ERROR, e);
+				}
 
 				if (Constants.AUTOSAVE_ON) {
 					File f = new File(Settings.getSettingsPath() + "/" + Constants.AUTOSAVE_FILENAME);
@@ -3441,8 +3472,7 @@ public class UIController implements Initializable {
 						table.getColumns().clear();
 						table.getColumns().addAll(columnList);
 					} catch (Exception e) {
-						// e.printStackTrace();
-						// logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
+						logger.error(Constants.DISABLE_COLUMN_REORDERING_ERROR, e);
 					}
 				}
 			}
@@ -3513,7 +3543,6 @@ public class UIController implements Initializable {
 					try {
 						file.delete();
 					} catch (Exception e) {
-						// e.printStackTrace();
 						// No good reason to show an alert here. The only
 						// purpose of this code is
 						// to prevent the build up of empty log files in the
@@ -3609,7 +3638,6 @@ public class UIController implements Initializable {
 			controller.setStage(nocitStage, this, rowIndex);
 			controller.populateTable(thresholdData);
 		} catch (Exception e) {
-			// e.printStackTrace();
 			Alert alert = new Alert(AlertType.ERROR, Constants.EDIT_ANALYTICAL_THRESHOLDS_ERROR);
 			alert.showAndWait();
 			logger.error(Constants.EDIT_ANALYTICAL_THRESHOLDS_ERROR, e);
@@ -3648,7 +3676,6 @@ public class UIController implements Initializable {
 				controller.disableControls(true);
 			}
 		} catch (Exception e) {
-			// e.printStackTrace();
 			logger.error(Constants.SETTINGS_POPUP_LOAD_ERROR_LOG_MESSAGE, e);
 		}
 	}
@@ -4373,7 +4400,6 @@ public class UIController implements Initializable {
 							} catch (Exception e) {
 								Alert alert = new Alert(AlertType.ERROR, "Unable to Create Saved Population");
 								alert.showAndWait();
-								// e.printStackTrace();
 								logger.error("Unable to Create Saved Population", e);
 							}
 						}
@@ -4696,9 +4722,10 @@ public class UIController implements Initializable {
 
 	/**
 	 * This method is called when File -> Save Calibration is selected.
+	 * @throws IOException 
 	 */
 	@FXML
-	public void saveCalibration() {
+	public void saveCalibration() throws IOException {
 		autosaveLoaded = false;
 		if (calibrationTable.getItems().size() == 0) {
 			Alert alert = new Alert(AlertType.ERROR, Constants.EMPTY_CALIBRATION_VALUES_TABLE_SAVE_MESSAGE);
@@ -5115,7 +5142,6 @@ public class UIController implements Initializable {
 			Desktop desktop = Desktop.getDesktop();
 			desktop.open(file);
 		} catch (Exception e) {
-			// e.printStackTrace();
 			logger.error(Constants.OPEN_LOGS_ERROR_LOG_MESSAGE, e);
 		}
 	}
@@ -5143,7 +5169,6 @@ public class UIController implements Initializable {
 			final PopulationManagerController controller = loader.getController();
 			controller.setStage(nocitStage, this);
 		} catch (Exception e) {
-			// e.printStackTrace();
 			logger.error(Constants.ERROR_LOADING_POPULATION_FREQUENCIES, e);
 		}
 	}
@@ -5542,7 +5567,6 @@ public class UIController implements Initializable {
 				backendController.runNOCIt(calibration, sampleID, sample, new File(output), maxNOC, rowID, freq,
 						rowIDAnalyticalThresholdsMap.get(Integer.toString(rowID)));
 			} catch (Exception e) {
-				// e.printStackTrace();
 				logger.error(Constants.RUN_NOCIT_ERROR_LOG_MESSAGE, e);
 			}
 		}

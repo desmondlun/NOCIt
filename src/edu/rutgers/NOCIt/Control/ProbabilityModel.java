@@ -89,6 +89,8 @@ public class ProbabilityModel {
 
 	/** The maximum hash code for the STR allele arrays. */
 	private int strAlleleMaxHashCode;
+	
+	private double popSubstructureAdj;
 
 	/**
 	 * Instantiates a new probability model.
@@ -101,16 +103,15 @@ public class ProbabilityModel {
 	 *            the calibration
 	 * @param analyticalThresholds
 	 *            the analytical thresholds
+	 * @param popSubstructureAdj
+	 * 			  the population substructure adjustment parameter
 	 */
 	public ProbabilityModel(Sample sample, FreqTable freqTable, Calibration calibration,
-			HashMap<Locus, Integer> analyticalThresholds) {
-		this(sample, freqTable, calibration, analyticalThresholds, 0.0);
-	}
-	
-	public ProbabilityModel(Sample sample, FreqTable freqTable, Calibration calibration,
-			HashMap<Locus, Integer> analyticalThresholds, double avgInbreedCoeff) {
+			HashMap<Locus, Integer> analyticalThresholds, double popSubstructureAdj) {
 		this.analyticalThresholds = analyticalThresholds;
 		this.calibration = calibration;
+		this.popSubstructureAdj = popSubstructureAdj;
+		
 		strAlleleMaxHashCode = freqTable.getMaxHashCode();
 
 		if (sample != null) {
@@ -150,10 +151,10 @@ public class ProbabilityModel {
 				for (STRAllele allele2 : freqDists.get(locus).keySet()) {
 					if (allele1.compareTo(allele2) <= 0) {
 						if (!allele1.equals(allele2)) 
-							totalProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - avgInbreedCoeff);
+							totalProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
 						else {
 							double p = freqDists.get(locus).get(allele1);
-							totalProb += p * p + p * (1 - p) * avgInbreedCoeff;
+							totalProb += p * p + p * (1 - p) * popSubstructureAdj;
 						}
 					}
 				}
@@ -165,10 +166,10 @@ public class ProbabilityModel {
 				for (STRAllele allele2 : freqDists.get(locus).keySet()) {
 					if (allele1.compareTo(allele2) <= 0) {
 						if (!allele1.equals(allele2)) 
-							cumProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - avgInbreedCoeff);
+							cumProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
 						else {
 							double p = freqDists.get(locus).get(allele1);
-							cumProb += p * p + p * (1 - p) * avgInbreedCoeff;
+							cumProb += p * p + p * (1 - p) * popSubstructureAdj;
 						}
 
 						int endPoint = (int) FastMath.round(cumProb / totalProb * SAMPLING_ARRAY_LENGTH);
@@ -593,19 +594,27 @@ public class ProbabilityModel {
 
 		return new double[] { multTerm, expTerm };
 	}
-
+	
 	/**
-	 * Gets the probability of an allele according to the population frequency
+	 * Gets the probability of a pair of alleles according to the population frequency
 	 * distribution.
 	 *
 	 * @param locus
 	 *            the locus
-	 * @param allele
-	 *            the allele
+	 * @param allele1
+	 *            the first allele
+	 * @param allele2
+	 *            the second allele
 	 * @return the probability of the allele
 	 */
-	public double getAlleleProbByFreq(Locus locus, Allele allele) {
-		return freqDists.get(locus).get(allele);
+	public double getAllelePairProbByFreq(Locus locus, Allele allele1, Allele allele2) {		
+		if (!allele1.equals(allele2)) {
+			return 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
+		}
+		else {
+			double p = freqDists.get(locus).get(allele1);
+			return p * p + p * (1 - p) * popSubstructureAdj;
+		}
 	}
 
 	/**

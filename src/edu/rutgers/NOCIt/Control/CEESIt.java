@@ -11,7 +11,9 @@ package edu.rutgers.NOCIt.Control;
 import static edu.rutgers.NOCIt.UIMain.logger;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -31,11 +33,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.LongAdder;
-
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.DoubleAdder;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
 
+import com.opencsv.CSVReader;
 import com.sun.javafx.charts.Legend;
 
 import edu.rutgers.NOCIt.Data.AMELAllele;
@@ -59,6 +62,14 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.Tooltip;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.ParseException;
 
 /**
  * This class implements CEESIt.
@@ -126,7 +137,7 @@ public class CEESIt {
 							trueAlleles[2 * contributor] = alleles[0];
 							trueAlleles[2 * contributor + 1] = alleles[1];
 						}
-
+ 
 						double[] prob = probabilityModel.calcProbIntegrate(locus, trueAlleles, quantParams);
 						double logProb = FastMath.log(prob[0]) + prob[1]; 
 
@@ -148,17 +159,12 @@ public class CEESIt {
 							trueAlleles[2 * contributor] = allele1;
 							trueAlleles[2 * contributor + 1] = allele2;
 							
-							if (!allele1.equals(allele2)) {
-								alleleProb *= probabilityModel.getAlleleProbByFreq(locus, allele1)
-										* probabilityModel.getAlleleProbByFreq(locus, allele2) * (1 - popSubstructureAdj);
-							}
-							else {
-								double p = probabilityModel.getAlleleProbByFreq(locus, allele1);
-								alleleProb *= p * p + p * (1 - p) * popSubstructureAdj;
-							}
-							
+							alleleProb *= probabilityModel.getAllelePairProbByFreq(locus, allele1, allele2);
+										
 							heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele1)
 									* probabilityModel.getAlleleProbByHeight(locus, allele2);
+							if (!allele1.equals(allele2))
+								heightProb *= 2;
 						}
 
 						double[] prob = probabilityModel.calcProbIntegrate(locus, trueAlleles, quantParams);
@@ -210,35 +216,84 @@ public class CEESIt {
 		 */
 		@Override
 		public double[] call() throws IOException {
-			long numAtLeast = 0;
+			double numAtLeast = 0.0;
 			double llSum = Double.NEGATIVE_INFINITY;
 			long numIter = 0;
 
 			HashMap<Locus, Allele[]> sampGeno = new HashMap<>();							
 
 			for (long i = 0; i < numIterations; i++) {
-				for (Locus locus : workingLoci) {
-					if (locus.isAMEL()) 
-						sampGeno.put(locus, probabilityModel.sampleAMELAllelePair());
-					else
-						sampGeno.put(locus, probabilityModel.sampleAllelePairByFreq(locus));						
-				}
-								
+				if (ThreadLocalRandom.current().nextDouble() > POP_FREQ_SAMPLE_PROB)
+					for (Locus locus : workingLoci) {
+						if (locus.isAMEL()) 
+							sampGeno.put(locus, probabilityModel.sampleAMELAllelePair());
+						else
+						{
+							STRAllele[] sample;	
+
+							STRAllele allele1 = probabilityModel.sampleAlleleByHeight(locus);
+							STRAllele allele2 = probabilityModel.sampleAlleleByHeight(locus);
+							//Organize Pair with smaller one in front
+							if (allele1.compareTo(allele2) <= 0) 
+								sample = new STRAllele[] {allele1, allele2};						
+							else						
+								sample = new STRAllele[] {allele2, allele1};
+
+							sampGeno.put(locus, sample);
+
+						}
+
+					}
+				else 
+					for (Locus locus : workingLoci) {
+						if (locus.isAMEL()) 
+							sampGeno.put(locus, probabilityModel.sampleAMELAllelePair());
+						else
+							sampGeno.put(locus, probabilityModel.sampleAllelePairByFreq(locus));						
+					}
+
+				double freqProb = 1.0;
+				double heightProb = 1.0;
+				for (Locus locus : workingLoci) 
+					if (!locus.isAMEL()) {
+						//importance sampling weight calculation 		
+						STRAllele allele1 = (STRAllele) sampGeno.get(locus)[0];
+						STRAllele allele2 = (STRAllele) sampGeno.get(locus)[1];
+
+						freqProb *= probabilityModel.getAllelePairProbByFreq(locus, allele1, allele2);
+						heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele1)
+								* probabilityModel.getAlleleProbByHeight(locus, allele2);
+						if (!allele1.equals(allele2))
+							heightProb *=2;	
+					}
+
 				boolean equalsPoiGeno = true;
 				for (Locus locus : workingLoci) 
 					equalsPoiGeno &= Arrays.equals(sampGeno.get(locus), poiGenotype.getAlleles(locus));							
-										
+
 				if (equalsPoiGeno)
 					continue;
-				
+
+				freqProb /= 1.0 - poiGenoProbByFreq;
+				heightProb /= 1.0 - poiGenoProbByHeight;
+				double samplingProb = (1.0 - POP_FREQ_SAMPLE_PROB) * heightProb + POP_FREQ_SAMPLE_PROB * freqProb;
+
 				double[] mixRatioProbs = new double[thetas.size()];
 
 				double max = Double.NEGATIVE_INFINITY;
 				for (int k = 0; k < thetas.size(); k++) { 
 					double mixRatioProb = 0.0;
 					for (Locus locus : workingLoci) { // Each locus
+
 						List<Allele> geno = Arrays.asList(sampGeno.get(locus));
-						mixRatioProb += genoProbs.get(locus).get(geno).get(k);
+						if (locus.isAMEL())
+						{
+							mixRatioProb += genoProbs.get(locus).get(geno).get(k);
+						}
+						else
+						{	
+							mixRatioProb += genoProbs.get(locus).get(geno).get(k);
+						}
 					}
 
 					mixRatioProbs[k] = mixRatioProb;
@@ -259,87 +314,139 @@ public class CEESIt {
 					logLikelihood -= FastMath.log(thetas.size());
 				}
 
-				llSum = UtilityMethods.logSum(llSum, logLikelihood);
+				llSum = UtilityMethods.logSum(llSum, logLikelihood + FastMath.log(freqProb / samplingProb));
 
 				double llHistKey = FastMath.floor(logLikelihood / minBinWidth);
 				if (!llHist.containsKey(llHistKey))
-					llHist.put(llHistKey, new LongAdder());
-				llHist.get(llHistKey).increment();
+					llHist.put(llHistKey, new DoubleAdder());
+				llHist.get(llHistKey).add(freqProb / samplingProb);			
 
 				if (logLikelihood >= poiLogProb)
-					numAtLeast++;
-				
+					numAtLeast += freqProb / samplingProb;
+
 				numIter++;
 			}
-
+			
+			System.out.println("\t\nNumber At least: " + numAtLeast + "\nllSum: " + llSum + "\nNumber of Iteration: " + numIter);
 			return new double[] { numAtLeast, llSum, numIter };
 		}
 	}
+	
+	private static final double POP_FREQ_SAMPLE_PROB = 0.1;
 
 	/**
 	 * The standard error tolerance for the probability of evidence given a
 	 * locus, set of quantification parameters, and number of contributors.
 	 */
-	private double genotypeTolerance = Settings.genotypeTolerance;
+	private static double genotypeTolerance = Settings.genotypeTolerance;
 	private double minBinWidth = Settings.binWidthFactor / 10 * FastMath.log(10);
 	private int maxNumLlrHistBins = Settings.numBins;
 	private int numSamples1 = Settings.numSamples1CEESIt;
 	private double numSamplesInc = Settings.numSamplesIncCEESIt;
 	private int thetaNumLevels = Settings.thetaNumLevelsCEESIt;
-	private long numPoiSamples = Settings.numberPOISamples;
-	private double popSubstructureAdj = Settings.popSubstructureAdj;
+	private static long numPoiSamples = Settings.numberPOISamples;	
 
 	/**
 	 * The main method.
 	 *
 	 * @param args
 	 *            the arguments
+	 * @throws IOException 
 	 */
-	public static void main(String[] args) {
-		File sampleFile = new File("etc/IP/testing_samples/1p_10s/1.csv");
-//		File sampleFile = new File("etc/IP/calibration samples - 10s/53.csv");
-//		File sampleFile = new File("etc/IP/testing_samples/2p_10s/1.csv");		
+	public static void main(String[] args) throws IOException {
 		String calibrationFilePath = "calib_idp_10s.zip";
 		String freqTableFilePath = "etc/ABI IP CAUC freq_COUNTS n=349.csv";
-		
-//		File sampleFile = new File("etc/EF_2p_RD12-0002(011613CMG_5sec)_F-failed_sample1.csv");
-//		String calibrationFilePath = "CP_RD12_IP_5s_F.zip";
-//		String freqTableFilePath = "etc/FF_IP_CAUC_n=349.csv";
+		File knownGenotypesFile = new File("etc/Known Genotypes.csv");
+
+		if(args.length == 0)
+		{
+			System.out.println("Missing Arguments: -f [Test File Name]");
+			System.exit(0);
+		}
 		
 		int noc = 1;
+		int sampleIDknowngeno = 1; 
 		
-		Genotype poiGenotype = new Genotype("01");
-		poiGenotype.putAlleles(new Locus("D8S1179"),
-				new STRAllele[] { new STRAllele("13"), new STRAllele("14") });
-		poiGenotype.putAlleles(new Locus("D21S11"),
-				new STRAllele[] { new STRAllele("27"), new STRAllele("29") });
-		poiGenotype.putAlleles(new Locus("D7S820"),
-				new STRAllele[] { new STRAllele("8"), new STRAllele("12") });
-		poiGenotype.putAlleles(new Locus("CSF1PO"),
-				new STRAllele[] { new STRAllele("10"), new STRAllele("12") });
-		poiGenotype.putAlleles(new Locus("D3S1358"),
-				new STRAllele[] { new STRAllele("16"), new STRAllele("18") });
-		poiGenotype.putAlleles(new Locus("TH01"), new STRAllele[] { new STRAllele("7"), new STRAllele("8") });
-		poiGenotype.putAlleles(new Locus("D13S317"),
-				new STRAllele[] { new STRAllele("12"), new STRAllele("14") });
-		poiGenotype.putAlleles(new Locus("D16S539"),
-				new STRAllele[] { new STRAllele("8"), new STRAllele("9") });
-		poiGenotype.putAlleles(new Locus("D2S1338"),
-				new STRAllele[] { new STRAllele("17"), new STRAllele("17") });
-		poiGenotype.putAlleles(new Locus("D19S433"),
-				new STRAllele[] { new STRAllele("13"), new STRAllele("13") });
-		poiGenotype.putAlleles(new Locus("vWA"),
-				new STRAllele[] { new STRAllele("17"), new STRAllele("19") });
-		poiGenotype.putAlleles(new Locus("TPOX"),
-				new STRAllele[] { new STRAllele("9"), new STRAllele("10") });
-		poiGenotype.putAlleles(new Locus("D18S51"),
-				new STRAllele[] { new STRAllele("15"), new STRAllele("16") });
-		poiGenotype.putAlleles(new Locus("AMEL"),
-				new AMELAllele[] { new AMELAllele("X"), new AMELAllele("Y") });
-		poiGenotype.putAlleles(new Locus("D5S818"),
-				new STRAllele[] { new STRAllele("12"), new STRAllele("12") });
-		poiGenotype.putAlleles(new Locus("FGA"),
-				new STRAllele[] { new STRAllele("22"), new STRAllele("24") });
+		//Added Command Line Arguments
+		//Example: -f etc/IP/testing_samples/1p_10s/1.csv -k 4 -n 1 -t 0.5 -nop 1000000000 
+		Options options = new Options();
+		Option sampleFileInput = new Option("f", "file", true, "Sample File");
+		sampleFileInput.setArgName("FILE PATH");
+		options.addOption(sampleFileInput);
+		
+		Option nocValue = new Option("n", "noc", true, "Number of Contributers");
+		nocValue.setArgName("INTEGER");
+		options.addOption(nocValue);
+		
+		Option knowngenotypeIDValue = new Option("k", "knownid", true, "SampleID from Known Genotype.csv");
+		knowngenotypeIDValue.setArgName("INTEGER");
+		options.addOption(knowngenotypeIDValue);
+		
+		Option genotypeToleranceValue = new Option("t", "tol", true, "Genotype Tolerance");
+		genotypeToleranceValue.setArgName("DOUBLE");
+		options.addOption(genotypeToleranceValue);
+		
+		Option nopValue = new Option("p", "nop",true, "Number of POI Samples");
+		nopValue.setArgName("LONG");
+		options.addOption(nopValue);
+
+		CommandLineParser clp = new DefaultParser();
+		HelpFormatter hf = new HelpFormatter();
+		CommandLine commandline = null;
+		
+		try {
+			commandline = clp.parse(options, args);
+					
+		}catch(ParseException e) {
+			System.err.println( "Parsing failed.  Reason: " + e.getMessage() );
+			hf.printHelp("CEESIt", options);
+			System.exit(1);
+		}
+		if (commandline.hasOption('n')) {
+			noc = Integer.parseInt(commandline.getOptionValue("n"));				//default to 1 contributer
+		}
+		if (commandline.hasOption('k')) {
+			sampleIDknowngeno = Integer.parseInt(commandline.getOptionValue('k'));		//default to first Sample Id in KnownGenotype.csv
+		}
+		if (commandline.hasOption('t')) {
+			genotypeTolerance = Double.parseDouble(commandline.getOptionValue('t'));		//default value to 0.5 from Settings
+		}
+		if (commandline.hasOption('p')) {
+			numPoiSamples = Long.parseLong(commandline.getOptionValue('p'));		//default value to 1000000000 from Settings
+		}
+
+		File sampleFile = new File(commandline.getOptionValue("file"));					//required file (ex. etc/IP/testing_samples/1p_10s/1.csv)
+		
+		CSVReader csvreader = new CSVReader( new FileReader(knownGenotypesFile) );
+		List< String[] > allRows = csvreader.readAll();
+		csvreader.close();
+		
+		String[] header = allRows.get(0);
+	
+		Genotype poiGenotype = new Genotype(Integer.toString(sampleIDknowngeno));
+		
+		for (int i = 1; i < allRows.size(); i++) {
+			
+			String[] row = allRows.get(i);
+			if(Integer.parseInt(row[0]) == sampleIDknowngeno)
+			{
+				for(int j = 1; j < header.length;j++)
+				{
+					
+					String[] allelePair = row[j].split(",");
+					if ((allelePair[0].equals("X")) || (allelePair[0].equals("Y")))
+						poiGenotype.putAlleles(new Locus("AMEL"),
+								new AMELAllele[] { new AMELAllele(allelePair[0]), new AMELAllele(allelePair[1]) });
+					else
+						poiGenotype.putAlleles(new Locus(header[j]),
+							new STRAllele[] { new STRAllele(allelePair[0]), new STRAllele(allelePair[1]) });
+				}
+				break;
+			}
+			
+			else if((i == allRows.size()-1)&& (Integer.parseInt(row[0]) != sampleIDknowngeno))
+				System.out.println("No Matching Sample ID");
+		}
 		
 		List<Genotype> knownGenotypes = new ArrayList<Genotype>();
 //		knownGenotypes.add(poiGenotype);
@@ -365,6 +472,9 @@ public class CEESIt {
 					System.out.println(ceesIt.getResultsString(analyticalThresholds));	
 				}
 			} catch (InterruptedException | ExecutionException | IOException | NumberFormatException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -448,10 +558,10 @@ public class CEESIt {
 	/** The time taken. */
 	private double timeTaken;
 	/** The log likelihood histogram. */
-	private ConcurrentHashMap<Double, LongAdder> llHist = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Double, DoubleAdder> llHist = new ConcurrentHashMap<>();
 
 	/** The log likelihood ratio histogram. */
-	private NavigableMap<Double, LongAdder> llrHist = new TreeMap<>();
+	private NavigableMap<Double, DoubleAdder> llrHist = new TreeMap<>();
 
 	/** The log likelihood ratio histogram bin width. */
 	private double llrHistBinWidth;
@@ -462,8 +572,10 @@ public class CEESIt {
 	/** The lines in the CSV output. */
 	private ArrayList<ArrayList<String>> csvOutputLines = new ArrayList<ArrayList<String>>();
 	
-	private long numLRGTOne = 0;
+	private double numLRGTOne = 0.0;
 	private double probLRGTOne = 0.0;
+	private double poiGenoProbByFreq = 1.0;
+	private double poiGenoProbByHeight = 1.0;
 
 	/**
 	 * Instantiates a new CEESIt.
@@ -527,6 +639,7 @@ public class CEESIt {
 		results += "\n";
 		
 		results += "Case Number: " + caseNumber + "\n";
+		results += "Genotype Tolerance: " + genotypeTolerance +"\n";
 		results += "Sample ID: " + sampleID + "\n";
 		results += "Sample File Name: " + sampleFileName + "\n";
 		results += "Comments: " + comments + "\n";
@@ -659,7 +772,6 @@ public class CEESIt {
 			csvOutputLine.add(String.format("%.3g", poiPValue));
 			
 			int tx = llrHist.keySet().size();
-			int[] xCounter = new int[tx];
 			double[] binStart = new double[tx];
 			double[] binEnd = new double[tx];
 
@@ -670,9 +782,8 @@ public class CEESIt {
 					binEnd[i] = (key + llrHistBinWidth) / FastMath.log(10);
 
 					if (i < maxNumLlrHistBins) {
-						csvOutputLine.add(String.format("%.2g", binStart[i]) + " to " + String.format("%.2g", binEnd[i]));
-						xCounter[i] = llrHist.get(key).intValue();
-						csvOutputLine.add(Integer.toString(xCounter[i]));
+						csvOutputLine.add(String.format("%.2g", binStart[i]) + " to " + String.format("%.2g", binEnd[i]));			
+						csvOutputLine.add(Double.toString(llrHist.get(key).doubleValue()));
 					} else {
 						csvOutputLine.add("");
 						csvOutputLine.add("");
@@ -701,7 +812,7 @@ public class CEESIt {
 
 		for (int n = 0; n < csvOutputLines.size(); n++) {
 			csvOutputLines.get(n).add(Constants.ceesItCSVOutputFileList.indexOf("Number of Samples with LR > 1"), 
-					Long.toString(numLRGTOne));
+					Double.toString(numLRGTOne));
 			csvOutputLines.get(n).add(Constants.ceesItCSVOutputFileList.indexOf("Pr(LR > 1)"), 
 					String.format("%.3g", probLRGTOne));
 		}
@@ -736,7 +847,7 @@ public class CEESIt {
 		yAxis.setLabel("Frequency");
 
 		int tx = llrHist.keySet().size();
-		int[] xCounter = new int[tx];
+		double[] xCounter = new double[tx];
 		double[] binStart = new double[tx];
 		double[] binEnd = new double[tx];
 
@@ -747,7 +858,7 @@ public class CEESIt {
 				binEnd[i] = (key + llrHistBinWidth) / FastMath.log(10);
 
 				xLabels.add(String.format("%.2g", binStart[i]) + " - " + String.format("%.2g", binEnd[i]));
-				xCounter[i] = llrHist.get(key).intValue();
+				xCounter[i] = llrHist.get(key).doubleValue();
 
 				i++;
 			}
@@ -837,6 +948,7 @@ public class CEESIt {
 
 		pValue /= numIterations;
 
+		System.out.println("p-value from random POI sampling = " + pValue +  "\nllSum = " + llSum);
 		return new double[] { pValue, llSum };
 	}
 
@@ -942,6 +1054,7 @@ public class CEESIt {
 		sampleFileLoci = sample.getLoci();
 		quantParams = sample.getQuantParams();
 
+
 		for (Locus locus : quantParams.keySet()) {
 			if (poiGenotype.containsLocus(locus)) {
 				if (calibration.getLoci().contains(locus)) {
@@ -977,11 +1090,13 @@ public class CEESIt {
 			workGenotypes.put(locus, new HashSet<>());
 		}
 
-		probabilityModel = new ProbabilityModel(sample, freqTable, calibration, analyticalThresholds, popSubstructureAdj);
+		probabilityModel = new ProbabilityModel(sample, freqTable, calibration, analyticalThresholds, Settings.popSubstructureAdj);
 
 		double initialTime = System.currentTimeMillis(); // Starting time
 
 		System.out.println("Pre-calculation of locus probabilities begins.");
+		PrintWriter writer = new PrintWriter("locusProbabilities.txt", "UTF-8");
+
 
 		for (int k = 0; k < thetas.size(); k++) { // Each mixture ratio
 			double[] mixRatio = thetas.get(k); // Mixture ratio
@@ -1030,6 +1145,7 @@ public class CEESIt {
 				}
 				
 				List<Future<AllelesLogProb>> futures = executor.invokeAll(callables);
+
 				for (Future<AllelesLogProb> future : futures) {
 					double logProb = future.get().getLogProb();										
 					List<Allele> genotype = future.get().getAlleles();
@@ -1041,11 +1157,11 @@ public class CEESIt {
 						genoProbs.get(locus).put(genotype, new ArrayList<>());					
 					genoProbs.get(locus).get(genotype).add(logProb);
 				}				
-				
+
 				executor.shutdown();
 			}
 		}
-
+		writer.close();
 		double treeTime = System.currentTimeMillis(); // Tree creation time
 		System.out.println("Pre-calculation of locus probabilities over. Time taken: "
 				+ (treeTime - initialTime) / 60000.00 + " minutes.");
@@ -1053,20 +1169,18 @@ public class CEESIt {
 		if (backendController != null)
 			backendController.updateCEESItProgress(0.5);
 		
-		double poiGenoProb = 1.0;
 		for (Locus locus : workingLoci) {
 			if (!locus.isAMEL()) {
-				if (!poiGenotype.getAlleles(locus)[0].equals(poiGenotype.getAlleles(locus)[1])) {
-					poiGenoProb *= 2 * probabilityModel.getAlleleProbByFreq(locus, poiGenotype.getAlleles(locus)[0])
-							* probabilityModel.getAlleleProbByFreq(locus, poiGenotype.getAlleles(locus)[1]) * (1 - popSubstructureAdj);
-				}
-				else {
-					double p = probabilityModel.getAlleleProbByFreq(locus, poiGenotype.getAlleles(locus)[0]);
-					poiGenoProb *= p * p + p * (1 - p) * popSubstructureAdj;					
-				}				
+				poiGenoProbByFreq *= probabilityModel.getAllelePairProbByFreq(locus, poiGenotype.getAlleles(locus)[0], poiGenotype.getAlleles(locus)[1]);		
+				poiGenoProbByHeight *= probabilityModel.getAlleleProbByHeight(locus, poiGenotype.getAlleles(locus)[0]);
+				poiGenoProbByHeight *= probabilityModel.getAlleleProbByHeight(locus, poiGenotype.getAlleles(locus)[1]);
+				if (poiGenotype.getAlleles(locus)[0] != poiGenotype.getAlleles(locus)[1])
+					poiGenoProbByHeight *= 2;
 			}
-			else
-				poiGenoProb *= 0.5;
+			else {
+				poiGenoProbByFreq *= 0.5;
+				poiGenoProbByHeight *= 0.5;
+			}
 		}
 
 		double probWorkGenotypes = 1.0;
@@ -1101,7 +1215,7 @@ public class CEESIt {
 		}
 			
 		if (poiInWorkGenotypes)
-			probWorkGenotypes -= poiGenoProb;
+			probWorkGenotypes -= poiGenoProbByFreq;
 		
 		// Calculation of true POI probability
 		double[] mixRatioProbs1 = new double[thetas.size()];
@@ -1133,15 +1247,21 @@ public class CEESIt {
 		System.out.println("Random path traversal ends. Time taken: " + (randomPathTime2 - randomPathTime1) / 60000.00
 				+ " minutes.");
 
-		poiPValue = values[0] * probWorkGenotypes + poiGenoProb;
+		poiPValue = values[0] * probWorkGenotypes + poiGenoProbByFreq;
 		double lrDen = UtilityMethods.logSum(FastMath.log(probWorkGenotypes) + values[1] - FastMath.log(numPoiSamples),
-				poiLogProb + FastMath.log(poiGenoProb));
+				poiLogProb + FastMath.log(poiGenoProbByFreq));
 		poiLLR = poiLogProb - lrDen;
+		System.out.println("poiLogProb: " + poiLogProb + "\nlrDen: " + lrDen);
+		System.out.println("values[1]: " + values[1]);
+		System.out.println("FastMath.log(probWorkGenotypes): " + FastMath.log(probWorkGenotypes));
 		
+		double llHistTotal = 0.0;
 		if (llHist.size() > 0) {
 			if (llHist.containsKey(Double.NEGATIVE_INFINITY)) {
 				llrHist.put(Double.NEGATIVE_INFINITY, llHist.get(Double.NEGATIVE_INFINITY));
 				llHist.remove(Double.NEGATIVE_INFINITY);
+				
+				llHistTotal += llHist.get(Double.NEGATIVE_INFINITY).doubleValue();
 			}
 
 			int maxBin = Collections.max(llHist.keySet()).intValue();
@@ -1150,21 +1270,25 @@ public class CEESIt {
 			int scaleFactor = (int) Math.ceil((double) numBins / maxNumLlrHistBins);
 
 			for (int i = minBin; i <= maxBin; i += scaleFactor)
-				llrHist.put(i * minBinWidth - lrDen, new LongAdder());
+				llrHist.put(i * minBinWidth - lrDen, new DoubleAdder());
 
 			llrHistBinWidth = scaleFactor * minBinWidth;
 			for (double llHistKey : llHist.keySet()) {
-				double llrHistKey = (Math.floor((llHistKey - minBin) / scaleFactor) * scaleFactor + minBin) * minBinWidth - lrDen;				
-				llrHist.get(llrHistKey).add(llHist.get(llHistKey).intValue());
-				
+				double llrHistKey = (Math.floor((llHistKey - minBin) / scaleFactor) * scaleFactor + minBin) * minBinWidth - lrDen;
+				if (llrHist.get(llrHistKey) != null)
+					llrHist.get(llrHistKey).add(llHist.get(llHistKey).doubleValue());				
 				if (llHistKey * minBinWidth - lrDen > 0)
-					numLRGTOne += llHist.get(llHistKey).intValue();
+					numLRGTOne += llHist.get(llHistKey).doubleValue();
+				
+				llHistTotal += llHist.get(llHistKey).doubleValue();
 			}
 			llHist.clear();
 		}
 		
+		System.out.println("llHistTotal: " + llHistTotal);
+		
 		if (poiLLR > 0)
-			probLRGTOne = poiGenoProb;
+			probLRGTOne = poiGenoProbByFreq;
 		else
 			probLRGTOne = 0.0;
 		

@@ -579,15 +579,17 @@ public class BackendController {
     			for (int k = 0; k < nocItCsvOutputLinesList.get(i).get(j).size(); k++) {	
     				line += nocItCsvOutputLinesList.get(i).get(j).get(k) + "\t";
     			}
-    			String [] entries = line.substring(0, line.length() - 1).split("\t");
+    			String[] entries = line.substring(0, line.length() - 1).split("\t");
     			lines.add(entries);
     		}
     	}
-    	String headerNames = "";
-		for (int j = 0; j < Constants.NOCIT_CSV_OUTPUT_FILE_HEADER.length; j++) {
-			headerNames += Constants.NOCIT_CSV_OUTPUT_FILE_HEADER[j] + "\t";
-		}
-    	CSVFileWriter.write(file.getAbsolutePath(), headerNames, lines);
+    	String headerNames = String.join("\t", Constants.NOCIT_CSV_OUTPUT_FILE_HEADER_1);
+    	for (int j = 0; j <= Constants.NOCIT_MAX_NOC_CHOICE; j++) {
+    		headerNames += "\tLog Likelihood n=" + j;
+    		headerNames += "\tAPP n=" + j;
+    	}
+    	headerNames += "\t" + String.join("\t", Constants.NOCIT_CSV_OUTPUT_FILE_HEADER_2);
 
+    	CSVFileWriter.write(file.getAbsolutePath(), headerNames, lines);
     }
 }

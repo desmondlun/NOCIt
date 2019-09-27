@@ -182,12 +182,19 @@ public class NOCIt {
 
 				double alleleProb = 1.0;
 				double heightProb = 1.0;
-				for (int i = 0; i < 2 * noc; i++) {
-					STRAllele allele = probabilityModel.sampleAlleleByHeight(locus);
-					trueAlleles[i] = allele;
+				for (int contributor = 0; contributor < noc; contributor++) { 
+					STRAllele allele1 = probabilityModel.sampleAlleleByHeight(locus);
+					STRAllele allele2 = probabilityModel.sampleAlleleByHeight(locus);
 
-					alleleProb *= probabilityModel.getAlleleProbByFreq(locus, allele);
-					heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele);
+					trueAlleles[2 * contributor] = allele1;
+					trueAlleles[2 * contributor + 1] = allele2;
+
+					alleleProb *= probabilityModel.getAllelePairProbByFreq(locus, allele1, allele2);
+
+					heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele1)
+							* probabilityModel.getAlleleProbByHeight(locus, allele2);
+					if (!allele1.equals(allele2))
+						heightProb *= 2;
 				}
 
 				double weight = alleleProb / heightProb; // Weight
@@ -479,7 +486,7 @@ public class NOCIt {
 					foutW.write(nocIt.getResultsString(analyticalThresholds));
 					foutW.close();
 				}
-			} catch (InterruptedException | ExecutionException | IOException e) {
+			} catch (InterruptedException | ExecutionException | IOException | ClassNotFoundException e) {
 				e.printStackTrace();
 			}
 		}
@@ -793,10 +800,11 @@ public class NOCIt {
 			csvOutputLine.add(Integer.toString(Settings.numSamples1));
 			csvOutputLine.add(Double.toString(Settings.numSamplesInc));
 			csvOutputLine.add(Double.toString(Settings.maxNumSamples));
+			csvOutputLine.add(Double.toString(Settings.popSubstructureAdj));
 
 			csvOutputLine.add(Integer.toString(maxNOC));
 
-			for (int noc = 0; noc <= 5; noc++) {
+			for (int noc = 0; noc <= Constants.NOCIT_MAX_NOC_CHOICE; noc++) {
 				if (noc <= maxNOC) {
 					csvOutputLine.add(Double.toString(logLs[noc]));
 					csvOutputLine.add(Double.toString(nocProbDist[noc]));
@@ -991,7 +999,7 @@ public class NOCIt {
 		}
 		System.out.println();
 
-		probabilityModel = new ProbabilityModel(sample, freqTable, calibration, analyticalThresholds);
+		probabilityModel = new ProbabilityModel(sample, freqTable, calibration, analyticalThresholds, Settings.popSubstructureAdj);
 
 		for (Locus locus : quantParams.keySet()) {
 			if (calibration.getLoci().contains(locus)) {

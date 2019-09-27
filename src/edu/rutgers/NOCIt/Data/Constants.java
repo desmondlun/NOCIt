@@ -7,13 +7,14 @@ package edu.rutgers.NOCIt.Data;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  *
  * @author rcarpenter
  */
 public class Constants {
-    public static final String APPLICATION_NAME = "NOCIt/CEESIt";
+    public static final String APPLICATION_NAME = "ValiDNA";
     public static final String APPLICATION_VERSION = "4.0.0";
     
     public static final double TWO_PI = 2 * Math.PI;
@@ -55,12 +56,11 @@ public class Constants {
     public static final String TREE_TABLE_COLUMN_B = "b";
     public static final String TREE_TABLE_COLUMN_C = "c";
     public static final String TREE_TABLE_COLUMN_D = "d";
-    public static final String TREE_TABLE_COLUMN_R_SQUARED = "R^2";
-    
+    public static final String TREE_TABLE_COLUMN_R_SQUARED = "R^2";    
     public static final int TREE_TABLE_COLUMN_R_SQUARED_INDEX = 6;
     
-    public static final String[] NOCIT_NOC_DROPDOWN_OPTIONS = new String[]{"1", "2", "3", "4", "5", "6"};
-    public static final String[] CEESIT_NOC_DROPDOWN_OPTIONS = new String[]{"1", "2", "3"};
+    public static final int NOCIT_MAX_NOC_CHOICE = 6;
+    public static final int CEESIT_MAX_NOC_CHOICE = 6;
     
     public static final String NOCIT_TABLE_COLUMN_GRAPH = "Graph";
     public static final String NOCIT_TABLE_COLUMN_CASE = "Case #";
@@ -83,7 +83,7 @@ public class Constants {
     	NOCIT_TABLE_COLUMN_CALIBRATION, NOCIT_TABLE_COLUMN_OUTPUT,
     	NOCIT_TABLE_COLUMN_COMMENTS, NOCIT_TABLE_COLUMN_THRESHOLDS, NOCIT_TABLE_COLUMN_ROW_ID};
     
-    public static java.util.List<String> nocItColumnsList = Arrays.asList(NOCIT_COLUMN_NAMES);
+    public static List<String> nocItColumnsList = Arrays.asList(NOCIT_COLUMN_NAMES);
     
     public static final int NOCIT_TABLE_COLUMN_GRAPH_INDEX = nocItColumnsList
     		.indexOf(NOCIT_TABLE_COLUMN_GRAPH);
@@ -315,26 +315,21 @@ public class Constants {
     public static final String KNOWN_GENOTYPE_DEFAULT_VALUE = DEFAULT_CHOOSE;
     
     public static final String SETTINGS_FILENAME = "Settings.properties";
-    public static final String SETTINGS_LOAD_ERROR_LOG_MESSAGE = "Error Loading Settings Properties: ";
-    public static final String SETTINGS_SAVE_ERROR_LOG_MESSAGE = "Error Saving Settings Properties: ";
+    public static final String SETTINGS_LOAD_ERROR_LOG_MESSAGE = "Error loading settings properties: ";
+    public static final String SETTINGS_SAVE_ERROR_LOG_MESSAGE = "Error saving settings properties: ";
     
-    public static final String CALIBRATION_FILES_LOAD_ERROR_LOG_MESSAGE = "Error Loading Calibration Files: ";
-    
-    public static final String CHOOSE_DEFAULT_DIRECTORY = "Select Default Directory...";
+    public static final String CHOOSE_DEFAULT_DIRECTORY = "Select default directory ...";
     public static final String CHOOSE_DEFAULT_DIRECTORY_ERROR_LOG_MESSAGE = "The default file directory has been changed. \n\nIf this directory includes Calibration files (.cal), you will need to restart the application to load them.";
     
     public static final String SELECT_FILE = "Select File...";
     public static final String SELECT_FOLDER = "Select Folder...";
     
-    public static final String CALIBRATION = "Calibration";
-    public static final String CALIBRATION_SUCCESSFULLY_SAVED = "The calibration was successfully saved.";
+    public static final String SAVE_OUTPUT_FILE = "Save output file ...";
     
-    public static final String SAVE_OUTPUT_FILE = "Save Output File...";
-    
-    public static final String SAVE_PROGRESS = "Save Calibration?";
+    public static final String SAVE_PROGRESS = "Save calibration?";
     public static final String SAVE_PROGRESS_MESSAGE = "Would you like to save your calibration before closing the application?";
-    public static final String SAVE_PROGRESS_ERROR_LOG_MESSAGE = "Error Saving Application Progress: ";
-    public static final String LOAD_PROGRESS_ERROR_LOG_MESSAGE = "Error Loading Application Progress: ";
+    public static final String CALIBRATION_LOAD_ERROR = "Error loading calibration";
+    public static final String CALIBRATION_SAVE_ERROR = "Error saving calibration";
     
     public static final String FILTER_HEIGHT_RATIO_ERROR = "Filter Height Ratio is not in a decimal number format.";
     public static final String FILTER_SIZE_RATIO_ERROR = "Filter Size Ratio is not in a decimal number format.";
@@ -611,8 +606,8 @@ public class Constants {
     public static final String DUPLICATE_OUTPUT_TOOLTIP_PREFIX = "Duplicate Output File - ";
     public static final String FILE_EXISTS_TOOLTIP_PREFIX = "File Exists - ";
     // end tooltips
-
-    public static final String[] NOCIT_CSV_OUTPUT_FILE_HEADER = {"Output File Name", "Sample ID", 
+   
+    public static final String[] NOCIT_CSV_OUTPUT_FILE_HEADER_1 = {"Output File Name", "Sample ID", 
     		"Sample File Name", "Case Number", "Comments", "Calibration Name", "Frequency File", 
     		"Population Name", "Number of People", "Bins File", "Filtered", 
     		"Pull-up Filter Height Ratio (%)", "Pull-up Filter Size Range (bp)",
@@ -621,10 +616,10 @@ public class Constants {
     		"Minus-A Filter Size Range (bp)", "Maximum Number of Processors", 
     		"Discretization Levels for Mixture Ratios", "Standard Error Tolerance", 
     		"Refinement Time Limit (s)", "Number of Samples in Batch for NOC=1", 
-    		"Multiplicative Factor", "Maximum # Samples in Batch", "Max NOC", "Log Likelihood n=0", 
-    		"APP n=0", "Log Likelihood n=1", "APP n=1", "Log Likelihood n=2", "APP n=2", "Log Likelihood n=3", 
-    		"APP n=3", "Log Likelihood n=4", "APP n=4", "Log Likelihood n=5", "APP n=5", "Locus", "AT", 
-    		"Standard Error Tolerance Reached", "Refinement Time Limit Reached"};
+    		"Multiplicative Factor", "Maximum # Samples in Batch", "Population Substructure Adjustment", "Max NOC"};
+    
+    public static final String[] NOCIT_CSV_OUTPUT_FILE_HEADER_2 = {"Locus", "AT", "Standard Error Tolerance Reached", 
+    		"Refinement Time Limit Reached"};
     
     public static final String[] CEESIT_CSV_OUTPUT_FILE_HEADER = {"Output File Name", "Sample ID", 
     		"Sample File Name", "Case Number", "Comments", "Calibration Name", "Frequency File", 
