@@ -335,18 +335,6 @@ public class CEESIt {
 	private static final double POP_FREQ_SAMPLE_PROB = 0.1;
 
 	/**
-	 * The standard error tolerance for the probability of evidence given a
-	 * locus, set of quantification parameters, and number of contributors.
-	 */
-	private static double genotypeTolerance = Settings.genotypeTolerance;
-	private double minBinWidth = Settings.binWidthFactor / 10 * FastMath.log(10);
-	private int maxNumLlrHistBins = Settings.numBins;
-	private int numSamples1 = Settings.numSamples1CEESIt;
-	private double numSamplesInc = Settings.numSamplesIncCEESIt;
-	private int thetaNumLevels = Settings.thetaNumLevelsCEESIt;
-	private static long numPoiSamples = Settings.numberPOISamples;	
-
-	/**
 	 * The main method.
 	 *
 	 * @param args
@@ -357,6 +345,8 @@ public class CEESIt {
 		String calibrationFilePath = "calib_idp_10s.zip";
 		String freqTableFilePath = "etc/ABI IP CAUC freq_COUNTS n=349.csv";
 		File knownGenotypesFile = new File("etc/Known Genotypes.csv");
+		double genotypeTolerance = Settings.genotypeTolerance;
+		long numPoiSamples = Settings.numPoiSamples;
 
 		if(args.length == 0)
 		{
@@ -467,6 +457,8 @@ public class CEESIt {
 					sample.applyThresholds(analyticalThresholds);
 
 					CEESIt ceesIt = new CEESIt(project.getCalibration());
+					ceesIt.setGenotypeTolerance(genotypeTolerance);
+					ceesIt.setNumPoiSamples(numPoiSamples);
 					ceesIt.runCEESIt(sampleID, sample, noc, poiGenotype, knownGenotypes, freqTable,
 							analyticalThresholds, null, null);
 					System.out.println(ceesIt.getResultsString(analyticalThresholds));	
@@ -576,6 +568,20 @@ public class CEESIt {
 	private double probLRGTOne = 0.0;
 	private double poiGenoProbByFreq = 1.0;
 	private double poiGenoProbByHeight = 1.0;
+	
+
+	/**
+	 * The standard error tolerance for the probability of evidence given a
+	 * locus, set of quantification parameters, and number of contributors.
+	 */
+	private double genotypeTolerance;
+	
+	private double minBinWidth;
+	private int maxNumLlrHistBins;
+	private int numSamples1;
+	private double numSamplesInc;
+	private int thetaNumLevels;
+	private long numPoiSamples;	
 
 	/**
 	 * Instantiates a new CEESIt.
@@ -585,6 +591,14 @@ public class CEESIt {
 	 */
 	public CEESIt(Calibration calibration) {
 		this.calibration = calibration;
+		
+		genotypeTolerance = Settings.genotypeTolerance;		
+		minBinWidth = Settings.binWidthFactor / 10 * FastMath.log(10);
+		maxNumLlrHistBins = Settings.numBins;
+		numSamples1 = Settings.numSamples1CEESIt;
+		numSamplesInc = Settings.numSamplesIncCEESIt;
+		thetaNumLevels = Settings.thetaNumLevelsCEESIt;
+		numPoiSamples = Settings.numPoiSamples;	
 	}
 
 	/**
@@ -756,13 +770,13 @@ public class CEESIt {
 			csvOutputLine.add(Double.toString(Settings.minusAHeightPct));
 			csvOutputLine.add(Double.toString(Settings.minusASizeRange));
 			csvOutputLine.add(Integer.toString(Settings.numProcessors));
-			csvOutputLine.add(Integer.toString(Settings.thetaNumLevelsCEESIt));
+			csvOutputLine.add(Integer.toString(thetaNumLevels));
 			csvOutputLine.add(Double.toString(Settings.binWidthFactor));
-			csvOutputLine.add(Integer.toString(Settings.numBins));
-			csvOutputLine.add(Integer.toString(Settings.numSamples1CEESIt));
-			csvOutputLine.add(Double.toString(Settings.numSamplesIncCEESIt));
-			csvOutputLine.add(Long.toString(Settings.numberPOISamples));
-			csvOutputLine.add(Double.toString(Settings.genotypeTolerance));
+			csvOutputLine.add(Integer.toString(maxNumLlrHistBins));
+			csvOutputLine.add(Integer.toString(numSamples1));
+			csvOutputLine.add(Double.toString(numSamplesInc));
+			csvOutputLine.add(Long.toString(numPoiSamples));
+			csvOutputLine.add(Double.toString(genotypeTolerance));
 			csvOutputLine.add(Double.toString(Settings.popSubstructureAdj));
 			
 			csvOutputLine.add(poiGenotype.getGenotypeID());
@@ -792,8 +806,8 @@ public class CEESIt {
 					i++;
 				}
 			}
-			if (Settings.numBins > llrHist.keySet().size()) {
-				int diff = Settings.numBins - llrHist.keySet().size();
+			if (maxNumLlrHistBins > llrHist.keySet().size()) {
+				int diff = maxNumLlrHistBins - llrHist.keySet().size();
 				for (int j = 0; j < diff; j++) {
 					csvOutputLine.add("");
 					csvOutputLine.add("");
@@ -917,42 +931,6 @@ public class CEESIt {
 	}
 
 	/**
-	 * Calculates the p-value based on sampling of random POIs.
-	 *
-	 * @return the double[]
-	 * @throws InterruptedException
-	 *             the interrupted exception
-	 * @throws ExecutionException
-	 *             the execution exception
-	 */
-
-	private double[] sampleRandomPOIs() throws InterruptedException, ExecutionException {
-		double pValue = 0.0;
-		double llSum = Double.NEGATIVE_INFINITY;
-		long numIterations = 0;
-
-		ExecutorService executor = Executors.newFixedThreadPool(numProcessors);
-		Set<RandomPOICallable> callables = new HashSet<>();
-		for (int j = 1; j <= numProcessors; j++)
-			callables.add(new RandomPOICallable(numPoiSamples / numProcessors));
-
-		List<Future<double[]>> futures = executor.invokeAll(callables);
-		for (Future<double[]> future : futures) {
-			double[] futureValues = future.get();
-			pValue += futureValues[0];
-			llSum = UtilityMethods.logSum(llSum, futureValues[1]);
-			numIterations += futureValues[2];
-		}
-
-		executor.shutdown();
-
-		pValue /= numIterations;
-
-		System.out.println("p-value from random POI sampling = " + pValue +  "\nllSum = " + llSum);
-		return new double[] { pValue, llSum };
-	}
-
-	/**
 	 * Calculates the likelihood ratio and p-value for a given person of
 	 * interest (POI) as well as the likelihood ratio distribution for randomly
 	 * generated POIs.
@@ -989,7 +967,7 @@ public class CEESIt {
 			System.out.println("Number of contributors must be greater than the number of known contributors.");
 			return;
 		}
-
+	
 		thetas = new ArrayList<>();
 		if (noc == 1)
 			thetas.add(new double[] { 1.0 });
@@ -998,18 +976,18 @@ public class CEESIt {
 				Iterator<int[]> iter = CombinatoricsUtils.combinationsIterator(thetaNumLevels - i - 1, noc - 2);
 				while (iter.hasNext()) {
 					int[] comb = iter.next();
-
+	
 					double[] theta = new double[noc];
 					if (comb.length > 0) {
 						int[] intTheta = new int[noc];
-
+	
 						intTheta[0] = i;
 						intTheta[1] = 1 + comb[0];
 						for (int i1 = 1; i1 < comb.length; i1++) {
 							intTheta[i1 + 1] = comb[i1] - comb[i1 - 1];
 						}
 						intTheta[noc - 1] = thetaNumLevels - i - 1 - comb[noc - 3];
-
+	
 						boolean isSorted = true;
 						for (int i1 = 2; i1 < intTheta.length; i1++) {
 							if (intTheta[i1] > intTheta[i1 - 1]) {
@@ -1017,26 +995,26 @@ public class CEESIt {
 								break;
 							}
 						}
-
+	
 						if (!isSorted) {
 							continue;
 						}
-
+	
 						for (int i1 = 0; i1 < theta.length; i1++)
 							theta[i1] = ((double) intTheta[i1]) / thetaNumLevels;
 					} else {
 						theta[0] = ((double) i) / thetaNumLevels;
 						theta[1] = 1.0 - theta[0];
 					}
-
+	
 					thetas.add(theta);
 				}
 			}
 		}
-
+	
 		numProcessors = Settings.numProcessors;
 		freqTable.calcProbDists(calibration.getKit(), sample);
-
+	
 		this.sampleID = sampleID;
 		this.outputFilePath = outputFilePath;
 		
@@ -1044,17 +1022,17 @@ public class CEESIt {
 		sample.calcHeightDist(freqTable);
 		sampleFiltered = sample.isFiltered();
 		sampleFileName = sample.getSampleFileName();		
-
+	
 		populationName = freqTable.getName();
 		caseNumber = sample.populationCaseNumberMap.get(populationName);
 		comments = sample.populationCommentsMap.get(populationName);
 		populationFilePath = freqTable.getFilePath();
 		numPeople = freqTable.getNumPeople();
-
+	
 		sampleFileLoci = sample.getLoci();
 		quantParams = sample.getQuantParams();
-
-
+	
+	
 		for (Locus locus : quantParams.keySet()) {
 			if (poiGenotype.containsLocus(locus)) {
 				if (calibration.getLoci().contains(locus)) {
@@ -1080,28 +1058,28 @@ public class CEESIt {
 			} else
 				lociNotInPoiGenotype.add(locus);
 		}
-
+	
 		// Genotypes to be used for p-value sampling
 		HashMap<Locus, Set<List<Allele>>> workGenotypes = new HashMap<>();
-
+	
 		genoProbs = new HashMap<>();
 		for (Locus locus : workingLoci) {
 			genoProbs.put(locus, new HashMap<>());
 			workGenotypes.put(locus, new HashSet<>());
 		}
-
+	
 		probabilityModel = new ProbabilityModel(sample, freqTable, calibration, analyticalThresholds, Settings.popSubstructureAdj);
-
+	
 		double initialTime = System.currentTimeMillis(); // Starting time
-
+	
 		System.out.println("Pre-calculation of locus probabilities begins.");
 		PrintWriter writer = new PrintWriter("locusProbabilities.txt", "UTF-8");
-
-
+	
+	
 		for (int k = 0; k < thetas.size(); k++) { // Each mixture ratio
 			double[] mixRatio = thetas.get(k); // Mixture ratio
 			System.out.println(Arrays.toString(mixRatio));
-
+	
 			for (Locus locus : workingLoci) { // Each locus;				
 				double[][] quantParams = new double[2][noc];
 				for (int i = 0; i < noc; i++) {
@@ -1111,7 +1089,7 @@ public class CEESIt {
 				
 				ExecutorService executor = Executors.newFixedThreadPool(numProcessors);
 				Set<CalcLogProbCallable> callables = new HashSet<>();
-
+	
 				if (!locus.isAMEL()) {
 					System.out.println(locus + " " + freqTable.getProbDists().get(locus).keySet().size());
 					
@@ -1145,19 +1123,19 @@ public class CEESIt {
 				}
 				
 				List<Future<AllelesLogProb>> futures = executor.invokeAll(callables);
-
+	
 				for (Future<AllelesLogProb> future : futures) {
 					double logProb = future.get().getLogProb();										
 					List<Allele> genotype = future.get().getAlleles();
 					
 					if (logProb != Double.NEGATIVE_INFINITY)
 						workGenotypes.get(locus).add(genotype);
-
+	
 					if (!genoProbs.get(locus).containsKey(genotype))
 						genoProbs.get(locus).put(genotype, new ArrayList<>());					
 					genoProbs.get(locus).get(genotype).add(logProb);
 				}				
-
+	
 				executor.shutdown();
 			}
 		}
@@ -1165,7 +1143,7 @@ public class CEESIt {
 		double treeTime = System.currentTimeMillis(); // Tree creation time
 		System.out.println("Pre-calculation of locus probabilities over. Time taken: "
 				+ (treeTime - initialTime) / 60000.00 + " minutes.");
-
+	
 		if (backendController != null)
 			backendController.updateCEESItProgress(0.5);
 		
@@ -1182,7 +1160,7 @@ public class CEESIt {
 				poiGenoProbByHeight *= 0.5;
 			}
 		}
-
+	
 		double probWorkGenotypes = 1.0;
 		boolean poiInWorkGenotypes = true;
 		for (Locus locus : workingLoci) {
@@ -1203,11 +1181,11 @@ public class CEESIt {
 					
 					if (!allele1.equals(allele2))
 						freq *= 2;
-
+	
 					probLocus += freq;
 				}
 			}
-
+	
 			System.out.println(locus + " " + probLocus);
 			probWorkGenotypes *= probLocus;
 			
@@ -1228,25 +1206,25 @@ public class CEESIt {
 				mixRatioProb += logLocusProb;
 			}
 			mixRatioProbs1[k] = mixRatioProb;
-
+	
 			if (mixRatioProb > max1)
 				max1 = mixRatioProb;
 		}
-
+	
 		double sum1 = 0.0;
 		for (int i = 0; i < mixRatioProbs1.length; i++) {
 			sum1 += FastMath.exp(mixRatioProbs1[i] - max1);
 		}
 		poiLogProb = max1 + FastMath.log(sum1); // Mix Ratio probs
 		poiLogProb -= FastMath.log(thetas.size()); // Averaged	
-
+	
 		double randomPathTime1 = System.currentTimeMillis();
 		System.out.println("Random path traversal begins.");
 		double[] values = sampleRandomPOIs(); // Try random path method
 		double randomPathTime2 = System.currentTimeMillis();
 		System.out.println("Random path traversal ends. Time taken: " + (randomPathTime2 - randomPathTime1) / 60000.00
 				+ " minutes.");
-
+	
 		poiPValue = values[0] * probWorkGenotypes + poiGenoProbByFreq;
 		double lrDen = UtilityMethods.logSum(FastMath.log(probWorkGenotypes) + values[1] - FastMath.log(numPoiSamples),
 				poiLogProb + FastMath.log(poiGenoProbByFreq));
@@ -1263,15 +1241,15 @@ public class CEESIt {
 				
 				llHistTotal += llHist.get(Double.NEGATIVE_INFINITY).doubleValue();
 			}
-
+	
 			int maxBin = Collections.max(llHist.keySet()).intValue();
 			int minBin = Collections.min(llHist.keySet()).intValue();
 			int numBins = maxBin - minBin + 1;
 			int scaleFactor = (int) Math.ceil((double) numBins / maxNumLlrHistBins);
-
+	
 			for (int i = minBin; i <= maxBin; i += scaleFactor)
 				llrHist.put(i * minBinWidth - lrDen, new DoubleAdder());
-
+	
 			llrHistBinWidth = scaleFactor * minBinWidth;
 			for (double llHistKey : llHist.keySet()) {
 				double llrHistKey = (Math.floor((llHistKey - minBin) / scaleFactor) * scaleFactor + minBin) * minBinWidth - lrDen;
@@ -1293,15 +1271,59 @@ public class CEESIt {
 			probLRGTOne = 0.0;
 		
 		probLRGTOne += (probWorkGenotypes * numLRGTOne) / numPoiSamples;
-
+	
 		if (backendController != null)
 			backendController.updateCEESItProgress(1.0);
-
+	
 		double finalTime = System.currentTimeMillis(); // Ending time
 		//double time = (finalTime - initialTime) / 60000;
 		//timeTaken = FastMath.round(time * 100.0) / 100.0;
 		
 		// report time in seconds to match NOCIt report
 		timeTaken = (finalTime - initialTime) / 1000;
+	}
+
+	/**
+	 * Calculates the p-value based on sampling of random POIs.
+	 *
+	 * @return the double[]
+	 * @throws InterruptedException
+	 *             the interrupted exception
+	 * @throws ExecutionException
+	 *             the execution exception
+	 */
+
+	private double[] sampleRandomPOIs() throws InterruptedException, ExecutionException {
+		double pValue = 0.0;
+		double llSum = Double.NEGATIVE_INFINITY;
+		long numIterations = 0;
+
+		ExecutorService executor = Executors.newFixedThreadPool(numProcessors);
+		Set<RandomPOICallable> callables = new HashSet<>();
+		for (int j = 1; j <= numProcessors; j++)
+			callables.add(new RandomPOICallable(numPoiSamples / numProcessors));
+
+		List<Future<double[]>> futures = executor.invokeAll(callables);
+		for (Future<double[]> future : futures) {
+			double[] futureValues = future.get();
+			pValue += futureValues[0];
+			llSum = UtilityMethods.logSum(llSum, futureValues[1]);
+			numIterations += futureValues[2];
+		}
+
+		executor.shutdown();
+
+		pValue /= numIterations;
+
+		System.out.println("p-value from random POI sampling = " + pValue +  "\nllSum = " + llSum);
+		return new double[] { pValue, llSum };
+	}
+
+	public void setGenotypeTolerance(double genotypeTolerance) {
+		this.genotypeTolerance = genotypeTolerance;
+	}
+
+	public void setNumPoiSamples(long numPoiSamples) {
+		this.numPoiSamples = numPoiSamples;
 	}
 }

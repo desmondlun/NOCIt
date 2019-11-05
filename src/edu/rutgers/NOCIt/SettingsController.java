@@ -264,8 +264,7 @@ public class SettingsController implements Initializable {
 		
 		thetaNumLevelsField.setText(Integer.toString(Settings.thetaNumLevels));
 		nocItStdErrorTolField.setText(Double.toString(Settings.nocItStdErrorTol));
-		int timeLimit = Settings.nocItTimeLimit;
-		nocItTimeLimitField.setText(Integer.toString((int) (timeLimit/1000)));
+		nocItTimeLimitField.setText(Integer.toString((int) (Settings.nocItTimeLimit/1000)));
 		numSamples1Field.setText(Integer.toString(Settings.numSamples1));
 		numSamplesIncField.setText(Double.toString(Settings.numSamplesInc));
 		maxNumSamplesField.setText(Integer.toString(Settings.maxNumSamples));
@@ -275,7 +274,7 @@ public class SettingsController implements Initializable {
 		numBinsField.setText(Integer.toString(Settings.numBins));
 		numSamples1CEESItField.setText(Integer.toString(Settings.numSamples1CEESIt));
 		numSamplesIncCEESItField.setText(Double.toString(Settings.numSamplesIncCEESIt));
-		poiSamplesField.setText(Long.toString(Settings.numberPOISamples));
+		poiSamplesField.setText(Long.toString(Settings.numPoiSamples));
 		genotypeToleranceField.setText(Double.toString(Settings.genotypeTolerance));
 		popSubstructureAdjField.setText(Double.toString(Settings.popSubstructureAdj));
 	
@@ -350,7 +349,7 @@ public class SettingsController implements Initializable {
 		UIController.addTextFieldDoubleValidator(numSamplesIncCEESItField, Double.toString(Settings.numSamplesIncCEESIt), 
 				Settings.MULTIPLICATIVE_FACTOR_CEESIT_MIN_VALUE, Settings.MULTIPLICATIVE_FACTOR_CEESIT_MAX_VALUE);
 		UIController.addTextFieldFocusListener(poiSamplesField);
-		UIController.addTextFieldLongValidator(poiSamplesField, Long.toString(Settings.numberPOISamples), 
+		UIController.addTextFieldLongValidator(poiSamplesField, Long.toString(Settings.numPoiSamples), 
 				Settings.POI_SAMPLES_MIN_VALUE, Settings.POI_SAMPLES_MAX_VALUE);
 		UIController.addTextFieldFocusListener(genotypeToleranceField);
 		UIController.addTextFieldDoubleValidator(genotypeToleranceField, Double.toString(Settings.genotypeTolerance), 
@@ -447,7 +446,7 @@ public class SettingsController implements Initializable {
 		Settings.numBins = Integer.parseInt(numBinsField.getText());
 		Settings.numSamples1CEESIt = Integer.parseInt(numSamples1CEESItField.getText());
 		Settings.numSamplesIncCEESIt = Double.parseDouble(numSamplesIncCEESItField.getText());
-		Settings.numberPOISamples = Long.parseLong(poiSamplesField.getText());
+		Settings.numPoiSamples = Long.parseLong(poiSamplesField.getText());
 		Settings.genotypeTolerance = Double.parseDouble(genotypeToleranceField.getText());
 		Settings.popSubstructureAdj = Double.parseDouble(popSubstructureAdjField.getText());
 		

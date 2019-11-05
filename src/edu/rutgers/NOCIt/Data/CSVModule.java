@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -43,7 +44,7 @@ public class CSVModule {
 	private String fileName;
 
 	/** The samples. */
-	private HashMap<String, Sample> samples = new HashMap<String, Sample>();
+	private Map<String, Sample> samples = new LinkedHashMap<String, Sample>();
 
 	/** Flag indicating whether the file is valid. */
 	private boolean validFile = true;
@@ -380,7 +381,7 @@ public class CSVModule {
 	 *
 	 * @return the samples
 	 */
-	public HashMap<String, Sample> getSamples() {
+	public Map<String, Sample> getSamples() {
 		return samples;
 	}
 
@@ -389,7 +390,7 @@ public class CSVModule {
 	 *
 	 * @return the sample names
 	 */
-	public ArrayList<String> getSampleNames() {
+	public List<String> getSampleNames() {
 		return new ArrayList<String>(samples.keySet());
 	}
 

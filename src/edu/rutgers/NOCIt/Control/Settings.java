@@ -247,7 +247,7 @@ public class Settings {
 	public static double numSamplesIncCEESIt = defaultNumSamplesIncCEESIt;
 	
 	/** The number of POI samples. */
-	public static long numberPOISamples = defaultNumberPOISamples;
+	public static long numPoiSamples = defaultNumberPOISamples;
 	
 	/**
 	 * The standard error tolerance for the probability of evidence given a
@@ -414,7 +414,7 @@ public class Settings {
 				if (properties.getProperty("numSamplesCEESIt") != null)
 					numSamplesIncCEESIt = Double.parseDouble(properties.getProperty("numSamplesCEESIt"));
 				if (properties.getProperty("numberPOISamples") != null)
-					numberPOISamples = Long.parseLong(properties.getProperty("numberPOISamples"));
+					numPoiSamples = Long.parseLong(properties.getProperty("numberPOISamples"));
 				if (properties.getProperty("genotypeTolerance") != null)
 					genotypeTolerance = Double.parseDouble(properties.getProperty("genotypeTolerance"));
 				if (properties.getProperty("popSubstructureAdj") != null)
@@ -490,7 +490,7 @@ public class Settings {
 			properties.setProperty("numBins", Integer.toString(numBins));
 			properties.setProperty("numSamples1CEESIt", Integer.toString(numSamples1CEESIt));
 			properties.setProperty("numSamplesCEESIt", Double.toString(numSamplesIncCEESIt));
-			properties.setProperty("numberPOISamples", Long.toString(numberPOISamples));
+			properties.setProperty("numberPOISamples", Long.toString(numPoiSamples));
 			properties.setProperty("genotypeTolerance", Double.toString(genotypeTolerance));
 			properties.setProperty("popSubstructureAdj", Double.toString(popSubstructureAdj));
 
