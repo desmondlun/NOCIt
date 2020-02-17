@@ -45,6 +45,8 @@ public class BOBYQAModelSolver implements ModelSolverInterface
 		catch( Exception e )
 		{
 			e.printStackTrace();
+			
+			res = model.getNullSolution();
 		}
 
 		return res;

@@ -63,8 +63,11 @@ public class NonLinearConjugateGradientModelSolver implements ModelSolverInterfa
 		catch( Exception e )
 		{
 			e.printStackTrace();
+			
+			res = model.getNullSolution();
 		}
-                System.out.println("NLGrad res "+Arrays.toString(res));
+                
+		System.out.println("NLGrad res "+Arrays.toString(res));
 		return res;
 	}
 	

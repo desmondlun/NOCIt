@@ -159,12 +159,11 @@ public class CEESIt {
 							trueAlleles[2 * contributor] = allele1;
 							trueAlleles[2 * contributor + 1] = allele2;
 							
-							alleleProb *= probabilityModel.getAllelePairProbByFreq(locus, allele1, allele2);
+							alleleProb *= probabilityModel.getAlleleProbByFreq(locus, allele1, trueAlleles, 2 * contributor)
+									* probabilityModel.getAlleleProbByFreq(locus, allele2, trueAlleles, 2 * contributor + 1);
 										
 							heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele1)
 									* probabilityModel.getAlleleProbByHeight(locus, allele2);
-							if (!allele1.equals(allele2))
-								heightProb *= 2;
 						}
 
 						double[] prob = probabilityModel.calcProbIntegrate(locus, trueAlleles, quantParams);
@@ -1237,9 +1236,8 @@ public class CEESIt {
 		if (llHist.size() > 0) {
 			if (llHist.containsKey(Double.NEGATIVE_INFINITY)) {
 				llrHist.put(Double.NEGATIVE_INFINITY, llHist.get(Double.NEGATIVE_INFINITY));
-				llHist.remove(Double.NEGATIVE_INFINITY);
-				
 				llHistTotal += llHist.get(Double.NEGATIVE_INFINITY).doubleValue();
+				llHist.remove(Double.NEGATIVE_INFINITY);
 			}
 	
 			int maxBin = Collections.max(llHist.keySet()).intValue();

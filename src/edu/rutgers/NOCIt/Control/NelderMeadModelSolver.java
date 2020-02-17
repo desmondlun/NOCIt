@@ -55,6 +55,8 @@ public class NelderMeadModelSolver implements ModelSolverInterface
 		catch( Exception e )
 		{
 			e.printStackTrace();
+			
+			res = model.getNullSolution();
 		}
 
 		return res;

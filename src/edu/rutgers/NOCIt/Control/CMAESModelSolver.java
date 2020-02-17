@@ -74,6 +74,8 @@ public class CMAESModelSolver implements ModelSolverInterface
 			catch( Exception e )
 			{
 				e.printStackTrace();
+				
+				res = model.getNullSolution();
 			}
 		}
                 

@@ -49,6 +49,8 @@ public class Calibration implements Serializable {
 
 	/** The number of points used for the plot curve. */
 	private static final int POINTS_FOR_CURVE = 100;
+	
+	private static final double DEFAULT_PLOT_MAX_X = 100;
 
 	/** The loci with enough data points to fit reverse stutter model. */
 	private HashSet<Locus> lociRStutter = new HashSet<>();
@@ -687,7 +689,7 @@ public class Calibration implements Serializable {
 		if (label.equals(Feature.TRUE.toString())) {
 			xData = trueXData.get(locus);
 			yData = trueYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double[] y = calcTrue(locus, x);
@@ -700,7 +702,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.RSTUTTER.toString())) {
 			xData = rStutterXData.get(locus);
 			yData = rStutterYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double[] y = calcRStutter(locus, x);
@@ -713,7 +715,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.FSTUTTER.toString())) {
 			xData = fStutterXData.get(locus);
 			yData = fStutterYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double[] y = calcFStutter(locus, x);
@@ -726,7 +728,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.NOISE.toString())) {
 			xData = noiseXData.get(locus);
 			yData = noiseYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double[] y = calcNoise(locus, x);
@@ -739,7 +741,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.TRUE_DO.toString())) {
 			xData = trueDOXData.get(locus);
 			yData = trueDOYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double y = calcTrueDO(locus, x);
@@ -750,7 +752,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.RSTUTTER_DO.toString())) {
 			xData = rStutterDOXData.get(locus);
 			yData = rStutterDOYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double y = calcRStutterDO(locus, x);
@@ -761,7 +763,7 @@ public class Calibration implements Serializable {
 		} else if (label.equals(Feature.FSTUTTER_DO.toString())) {
 			xData = fStutterDOXData.get(locus);
 			yData = fStutterDOYData.get(locus);
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			for (int i = 0; i < POINTS_FOR_CURVE; i++) {
 				double x = maxX * i / (POINTS_FOR_CURVE - 1);
 				double y = calcFStutterDO(locus, x);
@@ -773,10 +775,9 @@ public class Calibration implements Serializable {
 			xData = noiseDOXData.get(locus);
 			yData = noiseDOYData.get(locus);
 			// if all points are not plotted, points are removed and the size
-			// will no longer be correct
-			// for the number of points plotted string.
+			// will no longer be correct for the number of points plotted string.
 			int xDataSize = xData.size();
-			double maxX = Collections.max(xData);
+			double maxX = xData.size() > 0 ? Collections.max(xData) : DEFAULT_PLOT_MAX_X;
 			// Need to get corresponding y for each x
 			if (xData.size() > Settings.calibrationGraphMaxNumPoints && !plotAllCalibrationPoints) {
 				List<ArrayList<Double>> data = randomSamplesSubsetList(xData, yData, maxX);

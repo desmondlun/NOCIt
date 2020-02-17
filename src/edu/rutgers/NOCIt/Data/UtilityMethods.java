@@ -73,14 +73,12 @@ public class UtilityMethods {
 	public static String roundToSignificantFigures(double value, int significantFigures, DecimalFormat sciFormatter, 
 			double minDecimalFormat, double maxDecimalFormat) {
 		String result = Double.toString(value);
-		result = toSignificantFiguresString(BigDecimal.valueOf(value), significantFigures);
-		if (Math.abs(Double.valueOf(result)) != 0.0 && (Math.abs(Double.valueOf(result)) < minDecimalFormat || Math.abs(Double.valueOf(result)) >= maxDecimalFormat)) {
-			try {
+		
+		try {			
+			result = toSignificantFiguresString(BigDecimal.valueOf(value), significantFigures);
+			if (Math.abs(Double.valueOf(result)) != 0.0 && (Math.abs(Double.valueOf(result)) < minDecimalFormat || Math.abs(Double.valueOf(result)) >= maxDecimalFormat)) 
 				result = sciFormatter.format((Number)Double.valueOf(result));
-			} catch (NumberFormatException nfe) {
-
-			}
-		}
+		} catch (NumberFormatException nfe) { }
 
 		return result;
 	}
