@@ -1,17 +1,20 @@
 package edu.rutgers.NOCIt.Data;
 
+import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import com.opencsv.CSVReader;
+import org.apache.commons.io.input.BOMInputStream;
 
-import edu.rutgers.NOCIt.Control.Settings;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 
 /**
  * Creates a frequency hashmap from the frequency table file. The file is a csv
@@ -40,7 +43,7 @@ public class FreqTable {
 				for (Locus locus : freqTable.getLoci()) 
 					System.out.println(locus + ": " + freqTable.getProbDists().get(locus));
 			}
-		} catch (ParseException | IOException e) {
+		} catch (ParseException | IOException | CsvException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -48,13 +51,14 @@ public class FreqTable {
 	
 	public FreqTable() {};
 	
-	public FreqTable(String filePath, String popName, int numPeople) throws IOException {
+	public FreqTable(String filePath, String popName, int numPeople) throws IOException, CsvException {
 		this.name = popName;
 		this.filePath = filePath;
 		this.numPeople = numPeople;
 
 		File file = new File(filePath);
-		CSVReader csvreader = new CSVReader( new FileReader(file) );
+		CSVReader csvreader = new CSVReader(new InputStreamReader(
+				new BufferedInputStream(new BOMInputStream(new FileInputStream(file)))));
 		List< String[] > entries = csvreader.readAll();
 		csvreader.close();	
 

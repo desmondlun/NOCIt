@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 
 import edu.rutgers.NOCIt.UIMain;
 import javafx.scene.control.Alert;
@@ -63,7 +64,7 @@ public class FileReaders {
 				//System.out.println(genotype.getLocusValues());
 			}
 			csvReader.close();
-		} catch (IOException e) {
+		} catch (IOException | CsvValidationException e) {
 			// TODO Auto-generated catch block
 			//e.printStackTrace();
 			Alert alert = new Alert(AlertType.ERROR, Constants.VALIDATE_GENOTYPE_FILE_IMPORT_ERROR_MESSAGE);

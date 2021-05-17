@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 
 import edu.rutgers.NOCIt.Control.AutoSaver;
 import edu.rutgers.NOCIt.Control.BackendController;
@@ -84,7 +85,6 @@ import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
-import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -539,10 +539,10 @@ public class UIController implements Initializable {
 	private AutoSaver autoSaver;
 
 	/** The NOCIt time elapsed timer. */
-	public TimeElapsed nocItTimeElapsedTimer;
+	private TimeElapsed nocItTimeElapsedTimer;
 
 	/** The CEESIt time elapsed timer. */
-	public TimeElapsed ceesItTimeElapsedTimer;
+	private TimeElapsed ceesItTimeElapsedTimer;
 	
 	private boolean timerRunning = false;
 
@@ -647,10 +647,10 @@ public class UIController implements Initializable {
 	public TreeMap<String, FreqTable> populations = new TreeMap<>();
 
 	/** The output names population map. */
-	public HashMap<String, ArrayList<String>> outputNamesPopulationMap = new HashMap<String, ArrayList<String>>();
+	private HashMap<String, ArrayList<String>> outputNamesPopulationMap = new HashMap<String, ArrayList<String>>();
 	
 	/** The output names population map for CEESIt. */
-	public HashMap<String, ArrayList<String>> outputNamesPopulationCEESItMap = new HashMap<String, ArrayList<String>>();
+	private HashMap<String, ArrayList<String>> outputNamesPopulationCEESItMap = new HashMap<String, ArrayList<String>>();
 
 	/** The row ID analytical thresholds map. */
 	public HashMap<String, LinkedHashMap<Locus, Integer>> rowIDAnalyticalThresholdsMap = new HashMap<String, LinkedHashMap<Locus, Integer>>();
@@ -3865,6 +3865,10 @@ public class UIController implements Initializable {
 		}
 		return ceesItGraphSelectAllCheckBox;
 	}
+	
+	public TimeElapsed getCeesItTimeElapsedTimer() {
+		return ceesItTimeElapsedTimer;
+	}
 
 	/**
 	 * Gets the CSV module map.
@@ -4035,6 +4039,18 @@ public class UIController implements Initializable {
 			nocItGraphSelectAllCheckBox = selectAllCheckBox;
 		}
 		return nocItGraphSelectAllCheckBox;
+	}
+	
+	public TimeElapsed getNocItTimeElapsedTimer() {
+		return nocItTimeElapsedTimer;
+	}
+	
+	public HashMap<String, ArrayList<String>> getOutputNamesPopulationMap() {
+		return outputNamesPopulationMap;
+	}
+
+	public HashMap<String, ArrayList<String>> getOutputNamesPopulationCEESItMap() {
+		return outputNamesPopulationCEESItMap;
 	}
 
 	/**
@@ -4380,7 +4396,7 @@ public class UIController implements Initializable {
 			CSVReader reader;
 
 			try {
-				reader = new CSVReader(new FileReader(f), ',');
+				reader = new CSVReader(new FileReader(f));
 				String[] dataArray;
 				int count = 0;
 				try {
@@ -4406,7 +4422,7 @@ public class UIController implements Initializable {
 						count += 1;
 					}
 					reader.close();
-				} catch (IOException e) {
+				} catch (IOException | CsvValidationException e) {
 					e.printStackTrace();
 				}
 			} catch (FileNotFoundException e) {
@@ -5252,7 +5268,7 @@ public class UIController implements Initializable {
 					.get();
 			String poiGenotypeID = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_POI_INDEX)).get();
 			String knownContributorsEntry = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_KNOWN_CONTRIBUTORS_INDEX)).get();
-			if (knownContributorsEntry.length() > 0 && !knownContributorsEntry.equals(Constants.CEESIT_NO_KNOWN_CONTRIBUTORS_ENTRY)) {
+			if (knownContributorsEntry.length() > 0 && !knownContributorsEntry.equals(Constants.NO_KNOWN_CONTRIBUTORS_ENTRY)) {
 				knownContributorsArray = knownContributorsEntry.split(",");
 			}
 			String output = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX)).get();
@@ -5416,7 +5432,7 @@ public class UIController implements Initializable {
 					.get();
 			String poiGenotypeID = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_POI_INDEX)).get();
 			String knownContributorsEntry = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_KNOWN_CONTRIBUTORS_INDEX)).get();
-			if (knownContributorsEntry.length() > 0 && !knownContributorsEntry.equals(Constants.CEESIT_NO_KNOWN_CONTRIBUTORS_ENTRY)) {
+			if (knownContributorsEntry.length() > 0 && !knownContributorsEntry.equals(Constants.NO_KNOWN_CONTRIBUTORS_ENTRY)) {
 				knownContributorsArray = knownContributorsEntry.split(",");
 			}
 			String output = ((SimpleStringProperty) row.get(Constants.CEESIT_TABLE_COLUMN_OUTPUT_INDEX)).get();

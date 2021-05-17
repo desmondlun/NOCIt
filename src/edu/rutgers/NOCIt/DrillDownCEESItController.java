@@ -6,9 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -21,6 +19,7 @@ import java.util.ResourceBundle;
 import java.util.Set;
 
 import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 
 import edu.rutgers.NOCIt.Control.Calibration;
 import edu.rutgers.NOCIt.Control.CalibrationProjectHandler;
@@ -659,7 +658,7 @@ public class DrillDownCEESItController implements Initializable {
     		CSVReader reader;
 
     		try {
-    			reader = new CSVReader(new FileReader(f), ',');
+    			reader = new CSVReader(new FileReader(f));
     			String [] dataArray;
     			try {
     				while ((dataArray = reader.readNext()) != null) {
@@ -672,7 +671,7 @@ public class DrillDownCEESItController implements Initializable {
     				// contain a locus in the current thresholds, update the current thresholds using the
     				// saved thresholds value.
     				currentThresholdData = UtilityMethods.updatedThresholdsData(currentThresholdData, savedThresholdData, kit);
-    			} catch (IOException e) {
+    			} catch (IOException | NumberFormatException | CsvValidationException e) {
     				e.printStackTrace();
     			}
     		} catch (FileNotFoundException e) {

@@ -133,6 +133,23 @@ public class Kit implements Serializable {
 				+ allele.getFraction();
 	}
 	
+	public double[] calcSizeRange(Locus locus) {
+		double minSize = Double.POSITIVE_INFINITY;
+		double maxSize = Double.NEGATIVE_INFINITY;
+		
+		for (Allele allele : allelesMap.get(locus)) {
+			double size = calcFragmentSize(locus, allele);
+			
+			if (size < minSize)
+				minSize = size;
+			
+			if (size > maxSize)
+				maxSize = size;
+		}
+		
+		return new double[] {minSize, maxSize};
+	}
+		
 	public String getKitName() {
 		return kitName;
 	}

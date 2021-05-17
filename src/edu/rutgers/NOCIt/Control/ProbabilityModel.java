@@ -2,12 +2,11 @@ package edu.rutgers.NOCIt.Control;
 
 import static org.apache.commons.math3.special.Erf.erf;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.math3.util.FastMath;
@@ -24,7 +23,6 @@ import edu.rutgers.NOCIt.Data.Peak;
 import edu.rutgers.NOCIt.Data.STRAllele;
 import edu.rutgers.NOCIt.Data.Sample;
 
-// TODO: Auto-generated Javadoc
 /**
  * This class implements the probability model used to assess the probability of
  * observing a certain set of peak heights at a locus.
@@ -39,8 +37,6 @@ public class ProbabilityModel {
 	 * The length of the arrays used to sample alleles according to observed
 	 * peak heights and population frequency.
 	 */
-	private static final int SAMPLING_ARRAY_LENGTH = 10000;
-
 	/** The Constant SEXES. */
 	private final static String[] SEXES = new String[] { Constants.Terms.MALE, Constants.Terms.FEMALE };
 
@@ -66,18 +62,18 @@ public class ProbabilityModel {
 	private HashMap<Locus, HashMap<STRAllele, Double>> heightDists = null;
 
 	/** The height sampling arrays. */
-	private HashMap<Locus, STRAllele[]> heightSamplingArrays;
-
+	private HashMap<Locus, TreeMap<Double, STRAllele>> heightCumDists;
+	
 	/**
 	 * The probability distributions for alleles based on population frequency.
 	 */
 	private HashMap<Locus, HashMap<STRAllele, Double>> freqDists = null;
 
+	/** The frequency sampling arrays. */
+	private HashMap<Locus, TreeMap<Double, STRAllele[]>> freqPairCumDists;
+
 	/** All possible true and stutter alleles at each locus. */
 	private HashMap<Locus, HashSet<STRAllele>> possibleAlleles;
-
-	/** The frequency sampling arrays. */
-	private HashMap<Locus, STRAllele[][]> freqSamplingArrays;
 
 	/**
 	 * The number of times CalcSTRProb() and CalcAMELProb() have been called.
@@ -119,51 +115,29 @@ public class ProbabilityModel {
 			
 			// Heights intervals map is updated
 			heightDists = sample.getHeightDists();
-			this.heightSamplingArrays = new HashMap<>();		
+			this.heightCumDists = new HashMap<>();		
 			for (Locus locus : heightDists.keySet()) {
-				heightSamplingArrays.put(locus, new STRAllele[SAMPLING_ARRAY_LENGTH]);
-
-				double totalProb = 0.0;
-				for (double prob : heightDists.get(locus).values())
-					totalProb += prob;
+				heightCumDists.put(locus, new TreeMap<>());
 
 				double cumProb = 0.0;
-				int startPoint = 0;
 				for (STRAllele allele : heightDists.get(locus).keySet()) {
+					heightCumDists.get(locus).put(cumProb, allele);
 					cumProb += heightDists.get(locus).get(allele);
-
-					int endPoint = (int) FastMath.round(cumProb / totalProb * SAMPLING_ARRAY_LENGTH);
-					for (int i = startPoint; i < endPoint; i++)
-						heightSamplingArrays.get(locus)[i] = allele;
-					startPoint = endPoint;
 				}
 			}
 		}
 		
 		// Freq intervals map is updated
-		freqDists = freqTable.getProbDists();
-		this.freqSamplingArrays = new HashMap<>();
+		freqDists = freqTable.getProbDists();	
+		this.freqPairCumDists = new HashMap<>();
 		for (Locus locus : freqDists.keySet()) {
-			freqSamplingArrays.put(locus, new STRAllele[SAMPLING_ARRAY_LENGTH][2]);
-
-			double totalProb = 0.0;
-			for (STRAllele allele1 : freqDists.get(locus).keySet()) {
-				for (STRAllele allele2 : freqDists.get(locus).keySet()) {
-					if (allele1.compareTo(allele2) <= 0) {
-						if (!allele1.equals(allele2)) 
-							totalProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
-						else {
-							double p = freqDists.get(locus).get(allele1);
-							totalProb += p * p + p * (1 - p) * popSubstructureAdj;
-						}
-					}
-				}
-			}
+			freqPairCumDists.put(locus, new TreeMap<>());
 
 			double cumProb = 0.0;
-			int startPoint = 0;
 			for (STRAllele allele1 : freqDists.get(locus).keySet()) {
 				for (STRAllele allele2 : freqDists.get(locus).keySet()) {
+					freqPairCumDists.get(locus).put(cumProb, new STRAllele[]{allele1, allele2});
+					
 					if (allele1.compareTo(allele2) <= 0) {
 						if (!allele1.equals(allele2)) 
 							cumProb += 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
@@ -171,11 +145,6 @@ public class ProbabilityModel {
 							double p = freqDists.get(locus).get(allele1);
 							cumProb += p * p + p * (1 - p) * popSubstructureAdj;
 						}
-
-						int endPoint = (int) FastMath.round(cumProb / totalProb * SAMPLING_ARRAY_LENGTH);
-						for (int i = startPoint; i < endPoint; i++)
-							freqSamplingArrays.get(locus)[i] = new STRAllele[]{allele1, allele2};
-						startPoint = endPoint;
 					}
 				}
 			}
@@ -183,7 +152,7 @@ public class ProbabilityModel {
 
 		possibleAlleles = new HashMap<>();
 		for (Locus locus : freqDists.keySet()) {
-			possibleAlleles.put(locus, new HashSet<>());
+			possibleAlleles.put(locus, new HashSet<>()); 
 
 			for (STRAllele allele : freqDists.get(locus).keySet()) {
 				possibleAlleles.get(locus).add(allele);
@@ -216,7 +185,7 @@ public class ProbabilityModel {
 
 		HashSet<AMELAllele> presentTrueAlleles = new HashSet<>();
 		HashSet<Allele> trueAlleles = new HashSet<>(Arrays.asList(alleles));
-		ConcurrentMap<Allele, Peak> allObsPeaks = lociData.get(locus).getPeaks();
+		Map<Allele, Peak> allObsPeaks = lociData.get(locus).getPeaks();
 
 		calcProbCount++;
 
@@ -459,7 +428,7 @@ public class ProbabilityModel {
 
 		HashSet<STRAllele> presentTrueAlleles = new HashSet<>(); 
 		HashSet<Allele> trueAlleles = new HashSet<>(Arrays.asList(alleles));
-		ConcurrentMap<Allele, Peak> allObsPeaks = lociData.get(locus).getPeaks(); 
+		Map<Allele, Peak> allObsPeaks = lociData.get(locus).getPeaks(); 
 
 		calcProbCount++;
 
@@ -487,10 +456,6 @@ public class ProbabilityModel {
 		for (STRAllele allele : presentTrueAlleles) {
 			rStutterAlleles.add(allele.rStutterAllele());
 			fStutterAlleles.add(allele.fStutterAllele());
-
-			// Needed if stutter modeled by parent peak height
-			if (!allObsPeaks.containsKey(allele))
-				allObsPeaks.put(allele, new Peak(allele, 0));
 		}
 
 		double multTerm = 1.0;
@@ -505,8 +470,9 @@ public class ProbabilityModel {
 					double[] trueValues = calibration.calcTrue(locus, decayedMasses.get(allele));
 
 					STRAllele parentAllele = ((STRAllele) allele).rParentAllele();
-					double probDO = calibration.calcRStutterDO(locus, allObsPeaks.get(parentAllele).getHeight());
-					double[] stutterValues = calibration.calcRStutter(locus, allObsPeaks.get(parentAllele).getHeight());
+					int parentHeight = allObsPeaks.containsKey(parentAllele) ? allObsPeaks.get(parentAllele).getHeight() : 0;
+					double probDO = calibration.calcRStutterDO(locus, parentHeight);
+					double[] stutterValues = calibration.calcRStutter(locus, parentHeight);
 
 					weights = new double[] { probDO, 1 - probDO };
 					means = new double[] { trueValues[0], trueValues[0] + stutterValues[0] };
@@ -529,15 +495,12 @@ public class ProbabilityModel {
 
 						STRAllele rParentAllele = ((STRAllele) allele).rParentAllele();
 						STRAllele fParentAllele = ((STRAllele) allele).fParentAllele();
-						double probRStutterDO = calibration.calcRStutterDO(locus,
-								allObsPeaks.get(rParentAllele).getHeight());
-						double probFStutterDO = calibration.calcFStutterDO(locus,
-								allObsPeaks.get(fParentAllele).getHeight());
-
-						double[] rStutterValues = calibration.calcRStutter(locus,
-								allObsPeaks.get(rParentAllele).getHeight());
-						double[] fStutterValues = calibration.calcFStutter(locus,
-								allObsPeaks.get(fParentAllele).getHeight());
+						int rParentHeight = allObsPeaks.containsKey(rParentAllele) ? allObsPeaks.get(rParentAllele).getHeight() : 0;
+						int fParentHeight = allObsPeaks.containsKey(fParentAllele) ? allObsPeaks.get(fParentAllele).getHeight() : 0;
+						double probRStutterDO = calibration.calcRStutterDO(locus, rParentHeight);
+						double probFStutterDO = calibration.calcFStutterDO(locus, fParentHeight);
+						double[] rStutterValues = calibration.calcRStutter(locus, rParentHeight);
+						double[] fStutterValues = calibration.calcFStutter(locus, fParentHeight);
 
 						weights = new double[] { probFStutterDO * probRStutterDO, probFStutterDO * (1 - probRStutterDO),
 								(1 - probFStutterDO) * probRStutterDO, (1 - probFStutterDO) * (1 - probRStutterDO) };
@@ -549,9 +512,9 @@ public class ProbabilityModel {
 					} else {
 						// Possible reverse stutter only
 						STRAllele parentAllele = ((STRAllele) allele).rParentAllele();
-						double probDO = calibration.calcRStutterDO(locus, allObsPeaks.get(parentAllele).getHeight());
-
-						double[] values = calibration.calcRStutter(locus, allObsPeaks.get(parentAllele).getHeight());
+						int parentHeight = allObsPeaks.containsKey(parentAllele) ? allObsPeaks.get(parentAllele).getHeight() : 0;
+						double probDO = calibration.calcRStutterDO(locus, parentHeight);
+						double[] values = calibration.calcRStutter(locus, parentHeight);
 
 						weights = new double[] { probDO, 1 - probDO };
 						means = new double[] { 0.0, values[0] };
@@ -561,9 +524,9 @@ public class ProbabilityModel {
 					if (fStutterAlleles.contains(allele)) {
 						// Possible forward stutter only
 						STRAllele parentAllele = ((STRAllele) allele).fParentAllele();
-						double probDO = calibration.calcFStutterDO(locus, allObsPeaks.get(parentAllele).getHeight());
-
-						double[] values = calibration.calcFStutter(locus, allObsPeaks.get(parentAllele).getHeight());
+						int parentHeight = allObsPeaks.containsKey(parentAllele) ? allObsPeaks.get(parentAllele).getHeight() : 0;
+						double probDO = calibration.calcFStutterDO(locus, parentHeight);
+						double[] values = calibration.calcFStutter(locus, parentHeight);
 
 						weights = new double[] { probDO, 1 - probDO };
 						means = new double[] { 0.0, values[0] };
@@ -595,6 +558,19 @@ public class ProbabilityModel {
 		return new double[] { multTerm, expTerm };
 	}
 	
+	public double getAlleleProbByFreq(Locus locus, Allele allele, Allele[] sampledAlleles, int numSampled) {
+		if (popSubstructureAdj == 0.0 || numSampled == 0)
+			return freqDists.get(locus).get(allele);
+		
+		int numOfAllele = 0;
+		for (int i = 0; i < numSampled; i++)
+			if (sampledAlleles[i].equals(allele))
+				numOfAllele++;
+		
+		return (numOfAllele * popSubstructureAdj + (1 - popSubstructureAdj) * freqDists.get(locus).get(allele)) 
+				/ (1 + (numSampled - 1) * popSubstructureAdj);
+	}
+	
 	/**
 	 * Gets the probability of a pair of alleles according to the population frequency
 	 * distribution.
@@ -608,12 +584,19 @@ public class ProbabilityModel {
 	 * @return the probability of the allele
 	 */
 	public double getAllelePairProbByFreq(Locus locus, Allele allele1, Allele allele2) {		
-		if (!allele1.equals(allele2)) {
-			return 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
+		if (!allele1.equals(allele2)) {		
+			if (freqDists.get(locus).containsKey(allele1) && freqDists.get(locus).containsKey(allele2))
+				return 2 * freqDists.get(locus).get(allele1) * freqDists.get(locus).get(allele2) * (1 - popSubstructureAdj);
+			else
+				return 0.0;
 		}
 		else {
-			double p = freqDists.get(locus).get(allele1);
-			return p * p + p * (1 - p) * popSubstructureAdj;
+			if (freqDists.get(locus).containsKey(allele1)) {
+				double p = freqDists.get(locus).get(allele1);
+				return p * p + p * (1 - p) * popSubstructureAdj;
+			}
+			else
+				return 0.0;
 		}
 	}
 
@@ -628,7 +611,10 @@ public class ProbabilityModel {
 	 * @return the probability of the allele
 	 */
 	public double getAlleleProbByHeight(Locus locus, Allele allele) {
-		return heightDists.get(locus).get(allele);
+		if (heightDists.get(locus).containsKey(allele))
+			return heightDists.get(locus).get(allele);
+		else
+			return 0.0;
 	}
 
 	/**
@@ -659,8 +645,8 @@ public class ProbabilityModel {
 	 * @return the sampled allele
 	 */
 	public STRAllele[] sampleAllelePairByFreq(Locus locus) {
-		int r = ThreadLocalRandom.current().nextInt(0, SAMPLING_ARRAY_LENGTH); 
-		return freqSamplingArrays.get(locus)[r];
+		double r = ThreadLocalRandom.current().nextDouble();
+		return freqPairCumDists.get(locus).floorEntry(r).getValue();
 	}
 
 	/**
@@ -671,8 +657,8 @@ public class ProbabilityModel {
 	 * @return the sampled allele
 	 */
 	public STRAllele sampleAlleleByHeight(Locus locus) {
-		int r = ThreadLocalRandom.current().nextInt(0, SAMPLING_ARRAY_LENGTH); 
-		return heightSamplingArrays.get(locus)[r];
+		double r = ThreadLocalRandom.current().nextDouble();
+		return heightCumDists.get(locus).floorEntry(r).getValue();
 	}
 
 	/**

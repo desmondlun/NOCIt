@@ -121,14 +121,29 @@ public class Sample {
         }
     }
 
-	public void calcQuantParams(Kit kit) { 
-		for(Entry<String, ArrayList<LocusData>> dyeLocusData : dyeData.entrySet()){
+	public void calcQuantParams(Kit kit, boolean assumeNoDegradation, boolean ignoreDyeColors) { 
+		Set<Entry<String, ArrayList<LocusData>>> dyeLocusEntries;
+		if (!ignoreDyeColors)
+			dyeLocusEntries = dyeData.entrySet();
+		else {
+			ArrayList<LocusData> allLociData = new ArrayList<LocusData>();
+			for (String dye : dyeData.keySet()) 
+				allLociData.addAll(dyeData.get(dye));
+			
+			HashMap<String, ArrayList<LocusData>> map = new HashMap<>();
+			map.put("", allLociData);
+			
+			dyeLocusEntries = map.entrySet();
+		}
+		
+		for(Entry<String, ArrayList<LocusData>> dyeLocusData : dyeLocusEntries){
 			try{			
 				double minMeanSize = Double.POSITIVE_INFINITY;
 				double maxMeanSize = Double.NEGATIVE_INFINITY;
 				
 				double height0 = Double.NaN;
-				double height1 = Double.NaN;				
+				double height1 = Double.NaN;	
+				double meanSumHeights = 0.0;
 				for (LocusData locusData : dyeLocusData.getValue()) {
 					double meanSize = locusData.getMeanSize(kit);
 					double sumHeights = locusData.getSumHeights();
@@ -144,6 +159,14 @@ public class Sample {
 							height1 = sumHeights;
 						}
 					}
+					
+					meanSumHeights += sumHeights;
+				}
+				meanSumHeights /= dyeLocusData.getValue().size();
+				
+				if (assumeNoDegradation) {
+					height0 = meanSumHeights;
+					height1 = meanSumHeights;
 				}
 				
 				double b = (FastMath.log(height1) - FastMath.log(height0)) / (maxMeanSize - minMeanSize);
@@ -154,16 +177,17 @@ public class Sample {
 					params.add(b);
 
 					for (LocusData locusData : dyeLocusData.getValue()) {
-						double meanSize = locusData.getMeanSize(kit);
+						double[] sizeRange = kit.calcSizeRange(locusData.getLocus());
 
-						if(!Double.isNaN(meanSize) && meanSize >= minMeanSize && meanSize <= maxMeanSize) {
+						if(assumeNoDegradation || (sizeRange[1] >= minMeanSize && sizeRange[0] <= maxMeanSize)) {
 							quantParams.put(locusData.getLocus(), params);
 							point0s.put(locusData.getLocus(), new double[]{minMeanSize, height0});
 							point1s.put(locusData.getLocus(), new double[]{maxMeanSize, height1});
 						}
 					}									
 				}
-			} catch( Exception e ) {
+			} 
+			catch( Exception e ) {
 				e.printStackTrace();
 			}
 

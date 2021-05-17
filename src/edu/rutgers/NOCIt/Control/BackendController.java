@@ -43,6 +43,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.image.WritableImage;
 
@@ -57,8 +58,8 @@ public class BackendController {
     private UIController uiController;
     private Queue<Thread> nocItThreadQueue = new LinkedList<Thread>();
     private Queue<Thread> ceesItThreadQueue = new LinkedList<Thread>();
-    private Map<Integer, BarChart<String, Number>> nocItCharts = new HashMap<>();
-    private Map<Integer, BarChart<String, Number>> ceesItCharts = new HashMap<>();
+    private Map<Integer, XYChart<String, Number>> nocItCharts = new HashMap<>();
+    private Map<Integer, XYChart<String, Number>> ceesItCharts = new HashMap<>();
     private int nocItJobsTotal = 0;
     private int nocItJobsComplete = 0;
     // saves files where output names are the same but populations are different
@@ -116,9 +117,8 @@ public class BackendController {
         }
     }
     
-    private synchronized void ceesItThreadFinished(final BarChart<String, Number> barChart, final String results, final File outputFile, int rowID) {        
+    private synchronized void ceesItThreadFinished(final XYChart<String, Number> xyChart, final String results, final File outputFile, int rowID) {        
         this.ceesItThreadQueue.remove();
-        this.ceesItCharts.put(rowID, barChart);
         ceesItJobsComplete++;
         
         Thread nextThread = ceesItThreadQueue.peek();
@@ -126,31 +126,34 @@ public class BackendController {
         	nextThread.start();       
 
         //Add the Bar Chart to the UI.
-        if (barChart != null) {
+        if (xyChart != null) {
+            this.ceesItCharts.put(rowID, xyChart);
+            
         	Platform.runLater(new Runnable() {
         		@Override
         		public void run() {
-        			uiController.ceesItBarChartArea.getChildren().add(barChart);
+        			uiController.ceesItBarChartArea.getChildren().add(xyChart);
         			if (appendFilesCEESItMap.containsKey(outputFile.getAbsolutePath()) &&
     						appendFilesCEESItMap.get(outputFile.getAbsolutePath()).exists()) {
-    					File temp = appendFilesCEESItMap.get(outputFile.getAbsolutePath());
-    					temp.renameTo(new File(Settings.getSettingsPath() + File.separatorChar + "temp.pdf"));
-    					File oldFile = new File(Settings.getSettingsPath() + File.separatorChar + "temp.pdf");
-    					PDFMergerUtility ut = new PDFMergerUtility();
-    					createCEESItPDFReport(barChart, results, outputFile); 
-    					ut.addSource(oldFile);
-    					ut.addSource(outputFile);
-    					ut.setDestinationFileName(outputFile.getAbsolutePath());
-    					try {
-    						ut.mergeDocuments();
-    						oldFile.delete();
-    					} catch (COSVisitorException | IOException e) {
+        				try {
+        					File temp = appendFilesMap.get(outputFile.getAbsolutePath());
+        					temp.renameTo(File.createTempFile("temp", ".pdf"));
+
+        					File oldFile = temp;
+        					PDFMergerUtility ut = new PDFMergerUtility();
+        					createPDFReport(xyChart, results, outputFile); 
+        					ut.addSource(oldFile);
+        					ut.addSource(outputFile);
+        					ut.setDestinationFileName(outputFile.getAbsolutePath());
+        					ut.mergeDocuments();
+        					oldFile.delete();
+    					} catch (IOException | COSVisitorException e) {
     						logger.error("Error Merging PDF files", e);
     					}
     				} else {
-    					createCEESItPDFReport(barChart, results, outputFile); 
-    					if (uiController.outputNamesPopulationCEESItMap.get(outputFile.getAbsolutePath()) != null &&
-    							uiController.outputNamesPopulationCEESItMap.get(outputFile.getAbsolutePath()).size() > 1) {
+    					createPDFReport(xyChart, results, outputFile); 
+    					if (uiController.getOutputNamesPopulationCEESItMap().get(outputFile.getAbsolutePath()) != null &&
+    							uiController.getOutputNamesPopulationCEESItMap().get(outputFile.getAbsolutePath()).size() > 1) {
     						appendFilesCEESItMap.put(outputFile.getAbsolutePath(), outputFile);
     					}
     				}
@@ -171,79 +174,13 @@ public class BackendController {
         }
     }
     
-    public void createCEESItPDFReport(BarChart<String, Number> barChart, String results, File outputFile) {
+	private void createPDFReport(XYChart<String, Number> xyChart, String results, File outputFile) {
         try {
             PDDocument document = new PDDocument();
 
             //Create the image from the BarChart node.
             SnapshotParameters parameters = new SnapshotParameters();
-            //WritableImage wimage = new WritableImage(1000, 1000);
-            WritableImage wimage = barChart.snapshot(parameters, null);
-            BufferedImage originalImage = SwingFXUtils.fromFXImage(wimage, null);
-            int cropAmount = 30;
-            BufferedImage croppedImage = originalImage.getSubimage(0, cropAmount, originalImage.getWidth(), originalImage.getHeight() - cropAmount);
-//            File file = File.createTempFile("tempImage", ".temp");
-//            RenderedImage renderedImage = SwingFXUtils.fromFXImage(wimage, null);
-//            ImageIO.write(renderedImage, "png", file);
-//            PDXObjectImage image = new PDPixelMap(document, ImageIO.read(file));
-            PDXObjectImage image = new PDPixelMap(document, croppedImage);
-
-            //Create an array of lines by splitting the string according to the newline sequence.
-            String[] lines = results.split("\n");
-
-            //Set the font
-            PDFont font = PDType1Font.HELVETICA_BOLD;
-            //Calculate the font height 
-            float fontHeight = font.getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * 12;
-            //Calculate the page height based on the number of lines of text and the height of the image.
-            float pageHeight = ((lines.length + 3) * fontHeight) + image.getHeight() + 100;
-
-            //Add a page to the document
-            PDPage page = new PDPage(new PDRectangle(PDPage.PAGE_SIZE_LETTER.getWidth(), pageHeight));
-            document.addPage(page);
-            // Start a new content stream which will "hold" the to be created content
-            PDPageContentStream contentStream = new PDPageContentStream(document, page);
-
-            //Populate the content stream with the lines of text
-            float y = pageHeight - 100;
-            for (String line : lines) {
-                contentStream.beginText();
-                contentStream.setFont(font, 12);
-                contentStream.moveTextPositionByAmount(50, y);
-                contentStream.drawString(line);
-                contentStream.endText();
-
-                y -= fontHeight;
-            }
-
-            //Populate the content stream with the image.
-            contentStream.moveTo(50, y);
-            contentStream.drawImage(image, 50, y - image.getHeight());
-
-            // Make sure that the content stream is closed:
-            contentStream.close();
-
-            // Save the results and ensure that the document is properly closed:
-            document.save(outputFile.getAbsolutePath());
-            document.close();
-        } catch (final Exception e) {
-//            Platform.runLater(new Runnable() {
-//                @Override
-//                public void run() {
-                    logger.error(Constants.CREATE_PDF_REPORT_ERROR_LOG_MESSAGE, e);
-                    unwrittenFiles.add(outputFile.getAbsolutePath());
-//                }
-//            });
-        }
-    }
-
-    public void createNOCItPDFReport(BarChart<String, Number> barChart, String results, File outputFile) {
-        try {
-            PDDocument document = new PDDocument();
-
-            //Create the image from the BarChart node.
-            SnapshotParameters parameters = new SnapshotParameters();
-            WritableImage wimage = barChart.snapshot(parameters, null);
+            WritableImage wimage = xyChart.snapshot(parameters, null);
             BufferedImage originalImage = SwingFXUtils.fromFXImage(wimage, null);
             int cropAmount = 30;
             BufferedImage croppedImage = originalImage.getSubimage(0, cropAmount, originalImage.getWidth(), originalImage.getHeight() - cropAmount);
@@ -301,53 +238,57 @@ public class BackendController {
         return this.calibration;
     }
     
-    private synchronized void nocItThreadFinished(final BarChart<String, Number> barChart, final String results, final File outputFile, int rowID) {        
+    private synchronized void nocItThreadFinished(final XYChart<String, Number> xyChart, final String results, final File outputFile, int rowID) {        
         this.nocItThreadQueue.remove();
-        this.nocItCharts.put(rowID, barChart);
         nocItJobsComplete++;
         
         Thread nextThread = nocItThreadQueue.peek();
         if (nextThread != null)
         	nextThread.start();       
 
-    	Platform.runLater(new Runnable() {
-    		@Override
-    		public void run() {
-    			//Add the Bar Chart to the UI.
-    			if (barChart != null) {
-    				uiController.nocItBarChartArea.getChildren().add(barChart);
-    				if (appendFilesMap.containsKey(outputFile.getAbsolutePath()) &&
-    						appendFilesMap.get(outputFile.getAbsolutePath()).exists()) {
-    					File temp = appendFilesMap.get(outputFile.getAbsolutePath());
-    					temp.renameTo(new File(Settings.getSettingsPath() + File.separatorChar + "temp.pdf"));
-    					File oldFile = new File(Settings.getSettingsPath() + File.separatorChar + "temp.pdf");
-    					PDFMergerUtility ut = new PDFMergerUtility();
-    					createNOCItPDFReport(barChart, results, outputFile); 
-    					ut.addSource(oldFile);
-    					ut.addSource(outputFile);
-    					ut.setDestinationFileName(outputFile.getAbsolutePath());
-    					try {
-    						ut.mergeDocuments();
-    						oldFile.delete();
-    					} catch (COSVisitorException | IOException e) {
-    						logger.error("Error Merging PDF files", e);
-    					}
-    				} else {
-    					createNOCItPDFReport(barChart, results, outputFile); 
-    					if (uiController.outputNamesPopulationMap.get(outputFile.getAbsolutePath()) != null &&
-    							uiController.outputNamesPopulationMap.get(outputFile.getAbsolutePath()).size() > 1) {
-    						appendFilesMap.put(outputFile.getAbsolutePath(), outputFile);
-    					}
-    				}
-    				updateNOCItGraphs();
-    			}      
-    			
-    			if (nocItThreadQueue.isEmpty()) {
-    	            //Stop the progress bar and stop the Time Elapsed timer
-    				resetNOCIt();
-    			}
-    		}
-    	});
+        if (xyChart != null) {
+        	this.nocItCharts.put(rowID, xyChart);
+
+        	Platform.runLater(new Runnable() {
+        		@Override
+        		public void run() {
+        			//Add the Bar Chart to the UI.
+        			if (xyChart != null) {
+        				uiController.nocItBarChartArea.getChildren().add(xyChart);
+        				if (appendFilesMap.containsKey(outputFile.getAbsolutePath()) &&
+        						appendFilesMap.get(outputFile.getAbsolutePath()).exists()) {
+        					try {
+        						File temp = appendFilesMap.get(outputFile.getAbsolutePath());
+        						temp.renameTo(File.createTempFile("temp", ".pdf"));
+
+        						File oldFile = temp;
+        						PDFMergerUtility ut = new PDFMergerUtility();
+        						createPDFReport(xyChart, results, outputFile); 
+        						ut.addSource(oldFile);
+        						ut.addSource(outputFile);
+        						ut.setDestinationFileName(outputFile.getAbsolutePath());
+        						ut.mergeDocuments();
+        						oldFile.delete();
+        					} catch (COSVisitorException | IOException e) {
+        						logger.error("Error Merging PDF files", e);
+        					}
+        				} else {
+        					createPDFReport(xyChart, results, outputFile); 
+        					if (uiController.getOutputNamesPopulationMap().get(outputFile.getAbsolutePath()) != null &&
+        							uiController.getOutputNamesPopulationMap().get(outputFile.getAbsolutePath()).size() > 1) {
+        						appendFilesMap.put(outputFile.getAbsolutePath(), outputFile);
+        					}
+        				}
+        				updateNOCItGraphs();
+        			}      
+
+        			if (nocItThreadQueue.isEmpty()) {
+        				//Stop the progress bar and stop the Time Elapsed timer
+        				resetNOCIt();
+        			}
+        		}
+        	});
+        }
     }
 
     public LineChart<Number, Number> plotGraph(String label, Locus locus) {
@@ -365,7 +306,7 @@ public class BackendController {
 	}
 
     private void resetCEESIt() {
-        uiController.ceesItTimeElapsedTimer.stop();
+        uiController.getCeesItTimeElapsedTimer().stop();
         uiController.disableItemsWhileCEESItRunning(false);
         uiController.ceesItProgressBar.setProgress(0);
         
@@ -384,7 +325,7 @@ public class BackendController {
     }
 
     private void resetNOCIt() {
-        uiController.nocItTimeElapsedTimer.stop();
+        uiController.getNocItTimeElapsedTimer().stop();
         uiController.disableItemsWhileNOCItRunning(false);
         uiController.nocItProgressBar.setProgress(0);
         
@@ -405,15 +346,16 @@ public class BackendController {
     public synchronized void runCEESIt(final Calibration calibration, String sampleID, Sample sample, final File outputFile,
             final int noc, final Genotype poiGenotype, final List<Genotype> knownGenotypes, final int rowID,
             final FreqTable freqTable, HashMap<Locus,Integer> analyticalThresholds) {
-        final BackendController backendController = this;
+    	final BackendController backendController = this;
         Thread ceesItThread = new Thread() {
             public synchronized void run() {
                 synchronized (uiController) {
                     try {
                         CEESIt ceesIt = new CEESIt(calibration);
-                        ceesIt.runCEESIt(sampleID, sample, noc, poiGenotype, knownGenotypes, freqTable, analyticalThresholds,
-                        		outputFile.getAbsolutePath(), backendController);
-                        backendController.ceesItThreadFinished(ceesIt.graphBarChart(outputFile.getName()), 
+                        ceesIt.setOutputFilePath(outputFile.getAbsolutePath());
+                        ceesIt.setSampleID(sampleID);                        
+                        ceesIt.runCEESIt(sample, noc, poiGenotype, knownGenotypes, freqTable, analyticalThresholds, backendController);
+                        backendController.ceesItThreadFinished(ceesIt.graphChart(outputFile.getName()), 
                         		ceesIt.getResultsString(analyticalThresholds), outputFile, rowID);
                         ceesItCsvOutputLinesList.add(ceesIt.getCsvOutputLines());
                     } catch (InterruptedException e) {
@@ -425,6 +367,7 @@ public class BackendController {
                             	backendController.ceesItThreadFinished(null, null, outputFile, rowID);
                                 logger.error(Constants.RUN_CEESIT_THREAD_ERROR_LOG_MESSAGE, e);
                                 failedSamples.add(sampleID);
+                                UIController.displayErrorDialog("Error", e + "\nSee log file for more information.");
                             }
                         });
 
@@ -433,24 +376,29 @@ public class BackendController {
             }
         };
 
-        if (ceesItThreadQueue.isEmpty())
+        if (ceesItThreadQueue.isEmpty()) {
         	ceesItThread.start();
+	     	uiController.getCeesItTimeElapsedTimer().start();
+	     	uiController.disableItemsWhileCEESItRunning(true);
+        }
         
         ceesItThreadQueue.add(ceesItThread);
         ceesItJobsTotal++;
     }
 
     public synchronized void runNOCIt(final Calibration calibration, String sampleID, Sample sample,
-            final File outputFile, final int maxNOC, final int rowID, final FreqTable freqTable, HashMap<Locus,Integer> analyticalThesholds) {
+            final File outputFile, final int maxNOC, final int rowID, final FreqTable freqTable, HashMap<Locus,Integer> analyticalThresholds) {
     	final BackendController backendController = this;
         Thread nocItThread = new Thread() {
             public synchronized void run() {
                 synchronized (uiController) {
                     try {
                         NOCIt nocIt = new NOCIt(calibration);
-                        nocIt.runNOCIt(sampleID, sample, maxNOC, freqTable, analyticalThesholds, outputFile.getAbsolutePath(), backendController);                        
-                        backendController.nocItThreadFinished(nocIt.graphBarChart(outputFile.getName()), 
-                        		nocIt.getResultsString(analyticalThesholds), outputFile, rowID);
+                        nocIt.setOutputFilePath(outputFile.getAbsolutePath());
+                        nocIt.setSampleID(sampleID); 
+                        nocIt.runNOCIt(sample, maxNOC, null, freqTable, analyticalThresholds, backendController);                        
+                        backendController.nocItThreadFinished(nocIt.graphChart(outputFile.getName()), 
+                        		nocIt.getResultsString(analyticalThresholds), outputFile, rowID);
                         nocItCsvOutputLinesList.add(nocIt.getCsvOutputLines());
                     } catch (InterruptedException e) {
                     	// Thread interrupted; most probably because Cancel button was pressed
@@ -461,6 +409,7 @@ public class BackendController {
                             	backendController.nocItThreadFinished(null, null, outputFile, rowID);
                             	failedSamples.add(sampleID);
                                 logger.error(Constants.RUN_NOCIT_THREAD_ERROR_LOG_MESSAGE, e);
+                                UIController.displayErrorDialog("Error", e + "\nSee log file for more information.");
                             }
                         });
 
@@ -469,8 +418,11 @@ public class BackendController {
             }
         };
         
-        if (nocItThreadQueue.isEmpty())
+        if (nocItThreadQueue.isEmpty()) {
         	nocItThread.start();
+	     	uiController.getNocItTimeElapsedTimer().start();
+	     	uiController.disableItemsWhileNOCItRunning(true);
+        }
         
         nocItThreadQueue.add(nocItThread);
         nocItJobsTotal++;

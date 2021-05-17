@@ -20,7 +20,10 @@ import java.util.Set;
 
 import org.apache.logging.log4j.core.util.Integers;
 
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 
 import edu.rutgers.NOCIt.Control.Settings;
 
@@ -79,31 +82,23 @@ public class CSVModule {
 		this.fileName = fileName;
 
 		try {
+			CSVReader csvreader;
 			if (fileName.endsWith(".txt")) {
-				try {
-					CSVReader csvreader = new CSVReader(reader, '\t');
-					List<String[]> entries = csvreader.readAll();
-					csvreader.close();
-					processFile(kit, REQ_AUX_COLUMNS, entries);
-				} catch (Exception e) {
-					validFile = false;
-					// e.printStackTrace();
-					logger.error("Error reading sample file", e);
-				}
-			} else {
-				try {
-					CSVReader csvreader = new CSVReader(reader);
-					List<String[]> entries = csvreader.readAll();
-					csvreader.close();
-					// will work for kit files with Dye data
-					processFile(kit, REQ_AUX_COLUMNS, entries);
-				} catch (Exception e) {
-					validFile = false;
-					// e.printStackTrace();
-					logger.error("Error reading sample file", e);
-				}
+				CSVParser parser = new CSVParserBuilder().withSeparator('\t').build();				
+				csvreader = new CSVReaderBuilder(reader).withCSVParser(parser).build();
 			}
+			else 
+				csvreader = new CSVReader(reader);
+			List<String[]> entries = csvreader.readAll();
+			csvreader.close();
+			processFile(kit, REQ_AUX_COLUMNS, entries);
+		} catch (Exception e) {
+			validFile = false;
+			 e.printStackTrace();
+			logger.error("Error reading sample file", e);
+		}
 
+		try {
 			reader.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -429,7 +424,7 @@ public class CSVModule {
 			HashMap<String, HashMap<Locus, ArrayList<Double>>> quantParams = new HashMap<String, HashMap<Locus, ArrayList<Double>>>();
 
 			for (Entry<String, Sample> entry : mod.getSamples().entrySet()) {
-				entry.getValue().calcQuantParams(kit);
+				entry.getValue().calcQuantParams(kit, false, false);
 				quantParams.put(entry.getKey(), entry.getValue().getQuantParams());
 			}
 			final long endTime = System.currentTimeMillis();

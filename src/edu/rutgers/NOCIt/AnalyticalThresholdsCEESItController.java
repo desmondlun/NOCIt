@@ -92,7 +92,7 @@ public class AnalyticalThresholdsCEESItController implements Initializable {
         
         CSVWriter writer;
 		try {
-			writer = new CSVWriter(new FileWriter(f), ',');
+			writer = new CSVWriter(new FileWriter(f));
 			Set<Locus> keys = this.ceesitController.currentThresholdData.keySet();
 	        for (Locus locus : keys) {
 	        	String line = "";

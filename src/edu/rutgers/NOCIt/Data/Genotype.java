@@ -25,6 +25,7 @@ public class Genotype implements Serializable {
 	
 	public Genotype(Genotype genotype) {
 		this.genotypeID = genotype.genotypeID;
+		this.locusValues = new LinkedHashMap<Locus, Allele[]>();
 		
 		for (Locus locus : genotype.getLoci()) {
 			Allele[] alleles = new Allele[genotype.locusValues.get(locus).length];
@@ -34,6 +35,49 @@ public class Genotype implements Serializable {
 		}
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		for (Locus locus : locusValues.keySet())
+			for (Allele allele : locusValues.get(locus))
+				result = prime * result + allele.hashCode();
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Genotype other = (Genotype) obj;
+		if (locusValues == null) {
+			if (other.locusValues != null)
+				return false;
+		} else {
+			if (!locusValues.keySet().equals(other.locusValues.keySet()))
+				return false;
+			
+			for (Locus locus : locusValues.keySet())
+				if (!Arrays.equals(locusValues.get(locus), other.locusValues.get(locus)))
+					return false;
+		}
+		return true;
+	}
+	
+	@Override
+	public String toString() {
+		String str = "[genotypeID=" + genotypeID + ", ";
+		for (Locus locus : locusValues.keySet())
+			str += locus + ": " + Arrays.toString(locusValues.get(locus)) + ", ";
+		str = str.substring(0, str.length() - 2) + "]";
+		
+		return str;
+	}
+
 	public boolean isEmpty() {
 		return locusValues.isEmpty();
 	}

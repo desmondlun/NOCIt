@@ -34,7 +34,7 @@ public class CheckComboBoxTableCell<S,T> extends TableCell<ObservableList<?>, St
     		boolean startCEESItButtonClicked) {
         box = new CheckComboBox<>(choiceList);
         box.disableProperty().bind(column.editableProperty().not());
-        box.setPrefWidth(Constants.CEESIT_TABLE_COLUMN_KNOWN_CONTRIBUTORS_COMBO_WIDTH);
+        box.setPrefWidth(Constants.KNOWN_CONTRIBUTORS_COMBO_WIDTH);
         
         onShowListener = (ov, o, n) -> {
             final TableView<ObservableList<?>> tableView = getTableView();

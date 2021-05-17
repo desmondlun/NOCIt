@@ -19,6 +19,7 @@ import java.util.ResourceBundle;
 import java.util.Set;
 
 import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
 
 import edu.rutgers.NOCIt.Control.Calibration;
 import edu.rutgers.NOCIt.Control.CalibrationProjectHandler;
@@ -669,7 +670,7 @@ public class DrillDownNOCItController implements Initializable {
     		CSVReader reader;
 
     		try {
-    			reader = new CSVReader(new FileReader(f), ',');
+    			reader = new CSVReader(new FileReader(f));
     			String [] dataArray;
     			try {
     				while ((dataArray = reader.readNext()) != null) {
@@ -682,7 +683,7 @@ public class DrillDownNOCItController implements Initializable {
     				// contain a locus in the current thresholds, update the current thresholds using the
     				// saved thresholds value.
     				currentThresholdData = UtilityMethods.updatedThresholdsData(currentThresholdData, savedThresholdData, kit);
-    			} catch (IOException e) {
+    			} catch (IOException | NumberFormatException | CsvValidationException e) {
     				e.printStackTrace();
     			}
     		} catch (FileNotFoundException e) {

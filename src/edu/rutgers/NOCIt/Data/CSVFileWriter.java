@@ -18,7 +18,7 @@ public class CSVFileWriter {
 	public static void write(String fileName, String headerNames, ArrayList<String[]> lines) {
 		CSVWriter writer;
 		try {
-			writer = new CSVWriter(new FileWriter(fileName), ',');
+			writer = new CSVWriter(new FileWriter(fileName));
 
 			String[] header = headerNames.trim().split("\t");
 

@@ -260,11 +260,9 @@ public class Calibration implements Serializable {
 				// System.out.println("sample read :"+sampleID);
 				Sample sample = csvModule.getSamples().get(sampleID);
 
-				if (sample.getQuantParams().isEmpty()) {
-					// System.out.println("sample regression :"+sampleID);
-					sample.calcQuantParams(kit);
-
-				}
+				if (sample.getQuantParams().isEmpty()) 
+					sample.calcQuantParams(kit, false, false);
+				
 				Genotype genotype = sample.getGenotype();
 				if (genotype == null) {
 					continue;

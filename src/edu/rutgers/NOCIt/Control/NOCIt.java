@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,10 +29,13 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
 
+import com.opencsv.exceptions.CsvException;
+
 import edu.rutgers.NOCIt.Data.AMELAllele;
 import edu.rutgers.NOCIt.Data.CSVModule;
 import edu.rutgers.NOCIt.Data.Constants;
 import edu.rutgers.NOCIt.Data.FreqTable;
+import edu.rutgers.NOCIt.Data.Genotype;
 import edu.rutgers.NOCIt.Data.Locus;
 import edu.rutgers.NOCIt.Data.MD5CheckSumGenerator;
 import edu.rutgers.NOCIt.Data.STRAllele;
@@ -105,19 +109,31 @@ public class NOCIt {
 			double logProbSum = Double.NEGATIVE_INFINITY;
 			double logProbSumSq = Double.NEGATIVE_INFINITY;
 
+			List<Integer> contribInds = new ArrayList<Integer>();
+			for (int contributor = 0; contributor < noc; contributor++)
+				contribInds.add(contributor);
+
 			AMELAllele[] trueAlleles = new AMELAllele[2 * noc];
+			AMELAllele[] shuffledTrueAlleles = new AMELAllele[2 * noc];
 			for (int iteration = 1; iteration <= numIterations; iteration++) {
-				for (int contributor = 0; contributor < noc; contributor++) { // For
-					// each
-					// contributor
+				for (int contributor = 0; contributor < knownGenotypes.size(); contributor++) {
+					trueAlleles[2 * contributor] = (AMELAllele) knownGenotypes.get(contributor).getAlleles(locus)[0];
+					trueAlleles[2 * contributor + 1] = (AMELAllele) knownGenotypes.get(contributor).getAlleles(locus)[1];
+				}
+
+				for (int contributor = knownGenotypes.size(); contributor < noc; contributor++) {
 					AMELAllele[] alleles = probabilityModel.sampleAMELAllelePair();
 					trueAlleles[2 * contributor] = alleles[0];
 					trueAlleles[2 * contributor + 1] = alleles[1];
 				}
 
-				double logProb = probabilityModel.calcLogProbBernoulli(locus, trueAlleles, quantParams); // Peak
-				// heights
-				// prob
+				if (knownGenotypes.size() > 0 && noc > 1) 
+					Collections.shuffle(contribInds);
+				for (int contributor = 0; contributor < noc; contributor++) {
+					shuffledTrueAlleles[2 * contributor] = trueAlleles[2 * contribInds.get(contributor)];
+					shuffledTrueAlleles[2 * contributor + 1] = trueAlleles[2 * contribInds.get(contributor) + 1];
+				}					
+				double logProb = probabilityModel.calcLogProbBernoulli(locus, shuffledTrueAlleles, quantParams); 
 
 				logProbSum = UtilityMethods.logSum(logProbSum, logProb);
 				logProbSumSq = UtilityMethods.logSum(logProbSumSq, 2 * logProb);
@@ -176,32 +192,44 @@ public class NOCIt {
 			double logProbSum = Double.NEGATIVE_INFINITY;
 			double logProbSumSq = Double.NEGATIVE_INFINITY;
 
-			STRAllele[] trueAlleles = new STRAllele[2 * noc];
-			for (int iteration = 1; iteration <= numIterations; iteration++) { // Each
-				// iteration
+			List<Integer> contribInds = new ArrayList<Integer>();
+			for (int contributor = 0; contributor < noc; contributor++)
+				contribInds.add(contributor);
 
+			STRAllele[] trueAlleles = new STRAllele[2 * noc];
+			STRAllele[] shuffledTrueAlleles = new STRAllele[2 * noc];
+			for (int iteration = 1; iteration <= numIterations; iteration++) {
 				double alleleProb = 1.0;
 				double heightProb = 1.0;
-				for (int contributor = 0; contributor < noc; contributor++) { 
+				for (int contributor = 0; contributor < knownGenotypes.size(); contributor++) {
+					trueAlleles[2 * contributor] = (STRAllele) knownGenotypes.get(contributor).getAlleles(locus)[0];
+					trueAlleles[2 * contributor + 1] = (STRAllele) knownGenotypes.get(contributor).getAlleles(locus)[1];
+				}
+
+				for (int contributor = knownGenotypes.size(); contributor < noc; contributor++) { 
 					STRAllele allele1 = probabilityModel.sampleAlleleByHeight(locus);
 					STRAllele allele2 = probabilityModel.sampleAlleleByHeight(locus);
 
 					trueAlleles[2 * contributor] = allele1;
 					trueAlleles[2 * contributor + 1] = allele2;
 
-					alleleProb *= probabilityModel.getAllelePairProbByFreq(locus, allele1, allele2);
+					alleleProb *= probabilityModel.getAlleleProbByFreq(locus, allele1, trueAlleles, 2 * contributor)
+							* probabilityModel.getAlleleProbByFreq(locus, allele2, trueAlleles, 2 * contributor + 1);
 
 					heightProb *= probabilityModel.getAlleleProbByHeight(locus, allele1)
 							* probabilityModel.getAlleleProbByHeight(locus, allele2);
-					if (!allele1.equals(allele2))
-						heightProb *= 2;
 				}
 
 				double weight = alleleProb / heightProb; // Weight
 				double logProb = FastMath.log(weight);
 
-				logProb += probabilityModel.calcLogProbBernoulli(locus, trueAlleles, quantParams); // Signal
-				// prob
+				if (knownGenotypes.size() > 0 && noc > 1) 
+					Collections.shuffle(contribInds);
+				for (int contributor = 0; contributor < noc; contributor++) {
+					shuffledTrueAlleles[2 * contributor] = trueAlleles[2 * contribInds.get(contributor)];
+					shuffledTrueAlleles[2 * contributor + 1] = trueAlleles[2 * contribInds.get(contributor) + 1];
+				}					
+				logProb += probabilityModel.calcLogProbBernoulli(locus, shuffledTrueAlleles, quantParams); 
 
 				logProbSum = UtilityMethods.logSum(logProbSum, logProb);
 				logProbSumSq = UtilityMethods.logSum(logProbSumSq, 2 * logProb);
@@ -378,8 +406,7 @@ public class NOCIt {
 					- FastMath.log((numSamples - 1.0) * numSamples);
 			log2ndMoment = UtilityMethods.logSum(2 * logMean, logErrVar);
 
-			// System.out.println(locus + " " + Arrays.deepToString(theta) + " "
-			// + logLocusMean);
+//			 System.out.println(locus + " " + Arrays.deepToString(theta) + " " + logMean);
 		}
 
 		/**
@@ -430,10 +457,10 @@ public class NOCIt {
 	 */
 	public static void main(String[] args) {
 		String calibrationFilePath = "calib_idp_10s.zip";
-		String sampleFilePath = "etc/IP/testing_samples/1p_10s/1.csv";
+		String sampleFilePath = "etc/IP/testing_samples/1p_10s/1.csv"; 
 		String freqTableFilePath = "etc/ABI IP CAUC freq_COUNTS n=349.csv";
-		int npop = 343;
-		int maxNOC = 4;		
+		int npop = 349;
+		int maxNOC = 3;		
 		int iArgStart = 0;
 		
 		System.out.println("reading " + args.length + " arguments");
@@ -479,14 +506,14 @@ public class NOCIt {
 					sample.applyThresholds(analyticalThresholds);
 
 					NOCIt nocIt = new NOCIt(project.getCalibration());
-					nocIt.runNOCIt(sampleID, sample, maxNOC, freqTable, analyticalThresholds, null, null);
+					nocIt.runNOCIt(sample, maxNOC, null, freqTable, analyticalThresholds, null);
 					System.out.println(nocIt.getResultsString(analyticalThresholds));
 
 					FileWriter foutW = new FileWriter(new File(sampleID + ".out.txt"));
 					foutW.write(nocIt.getResultsString(analyticalThresholds));
 					foutW.close();
 				}
-			} catch (InterruptedException | ExecutionException | IOException | ClassNotFoundException e) {
+			} catch (InterruptedException | ExecutionException | IOException | ClassNotFoundException | CsvException e) {
 				e.printStackTrace();
 			}
 		}
@@ -522,13 +549,13 @@ public class NOCIt {
 	private double timeTaken;
 
 	/** The loci that NOCIt uses. */
-	private HashSet<Locus> workingLoci;
+	private HashSet<Locus> workingLoci = new HashSet<>();
 
 	/** The loci that are not in the calibration data. */
-	private HashSet<Locus> lociNotInCalib;
+	private HashSet<Locus> lociNotInCalib = new HashSet<>();
 
 	/** The loci that are not in the frequency table. */
-	private HashSet<Locus> lociNotInFreqTable;
+	private HashSet<Locus> lociNotInFreqTable = new HashSet<>();
 
 	/** The calibration. */
 	private final Calibration calibration;
@@ -537,19 +564,19 @@ public class NOCIt {
 	private ProbabilityModel probabilityModel;
 
 	/** The output file path. */
-	private String outputFilePath;
+	private String outputFilePath = "";
 
 	/** The sample ID. */
-	private String sampleID;
+	private String sampleID = "";
 	
 	/** The sample file name. */
 	private String sampleFileName;
 
 	/** The case number. */
-	private String caseNumber;
+	private String caseNumber = "";
 
 	/** The comments. */
-	private String comments;
+	private String comments = "";
 
 	/** The number of cores. */
 	private int cores;
@@ -568,6 +595,10 @@ public class NOCIt {
 
 	/** The lines in the CSV output. */
 	private ArrayList<ArrayList<String>> csvOutputLines = new ArrayList<ArrayList<String>>();
+
+	private List<Genotype> knownGenotypes;
+	
+	private ExecutorService executor;
 
 	/**
 	 * Instantiates a new NOCIt.
@@ -603,22 +634,13 @@ public class NOCIt {
 	private double[] calcLogLocusSumProbBatch(Locus locus, int batchSize, int noc, double[][] quantParams)
 			throws InterruptedException, ExecutionException {
 		int threadIterations = batchSize / cores;
-		ExecutorService executor = Executors.newFixedThreadPool(cores);
-		List<Future<double[]>> futures;
+		List<Future<double[]>> futures = new ArrayList<>();
 		if (!locus.isAMEL()) { // Non-AMEL
-			Set<CalcSTRProbCallable> callables = new HashSet<>();
-			for (int j = 1; j <= cores; j++) {
-				callables.add(new CalcSTRProbCallable(noc, quantParams, locus, threadIterations));
-			}
-
-			futures = executor.invokeAll(callables);
+			for (int j = 1; j <= cores; j++)
+				futures.add(executor.submit(new CalcSTRProbCallable(noc, quantParams, locus, threadIterations)));
 		} else { // AMEL locus
-			Set<CalcAMELProbCallable> callables = new HashSet<>();
-			for (int j = 1; j <= cores; j++) {
-				callables.add(new CalcAMELProbCallable(noc, quantParams, locus, threadIterations));
-			}
-
-			futures = executor.invokeAll(callables);
+			for (int j = 1; j <= cores; j++) 
+				futures.add(executor.submit(new CalcAMELProbCallable(noc, quantParams, locus, threadIterations)));
 		}
 
 		double logSum = Double.NEGATIVE_INFINITY;
@@ -628,8 +650,6 @@ public class NOCIt {
 			logSum = UtilityMethods.logSum(logSum, futureValues[0]);
 			logSumSq = UtilityMethods.logSum(logSumSq, futureValues[1]);
 		}
-
-		executor.shutdown();
 
 		return new double[] { logSum, logSumSq };
 	}
@@ -756,8 +776,16 @@ public class NOCIt {
 			}
 		}
 		results += "\n";
-
-		for (int noc = 0; noc <= maxNOC; noc++) {
+		
+		String knownGenotypesString = Constants.NO_KNOWN_CONTRIBUTORS_ENTRY;
+		if (knownGenotypes != null && knownGenotypes.size() > 0) {
+			knownGenotypesString = knownGenotypes.get(0).getGenotypeID();
+			for (int i = 1; i < knownGenotypes.size(); i++)
+				knownGenotypesString += "," + knownGenotypes.get(i).getGenotypeID();
+		}
+		results += "Known genotypes IDs: " + knownGenotypesString + "\n";
+		
+		for (int noc = knownGenotypes.size(); noc <= maxNOC; noc++) {
 			results += "Number of contributors: " + noc + "\n";
 			if (logLs[noc] > Double.NEGATIVE_INFINITY) {
 				results += "Likelihood: exp(" + logLs[noc] + ") +/- exp(" + logLStdErrs[noc] + ")\n";						
@@ -803,9 +831,10 @@ public class NOCIt {
 			csvOutputLine.add(Double.toString(Settings.popSubstructureAdj));
 
 			csvOutputLine.add(Integer.toString(maxNOC));
+			csvOutputLine.add(knownGenotypesString);
 
 			for (int noc = 0; noc <= Constants.NOCIT_MAX_NOC_CHOICE; noc++) {
-				if (noc <= maxNOC) {
+				if (noc >= knownGenotypes.size() && noc <= maxNOC) {
 					csvOutputLine.add(Double.toString(logLs[noc]));
 					csvOutputLine.add(Double.toString(nocProbDist[noc]));
 				} else {
@@ -855,7 +884,7 @@ public class NOCIt {
 	 * @return the bar chart
 	 */
 	@SuppressWarnings({ "unchecked" })
-	public BarChart<String, Number> graphBarChart(String title) {
+	public BarChart<String, Number> graphChart(String title) {
 		final CategoryAxis xAxis = new CategoryAxis();
 		final NumberAxis yAxis = new NumberAxis(0.0, 1.0, 0.1);
 		final BarChart<String, Number> bc = new BarChart<String, Number>(xAxis, yAxis);
@@ -896,7 +925,7 @@ public class NOCIt {
 
 	private void calcAPP() {
 		double maxLogL = Double.NEGATIVE_INFINITY;
-		for (int noc = 0; noc < logLs.length; noc++) {
+		for (int noc = knownGenotypes.size(); noc < logLs.length; noc++) {
 			if (logLs[noc] > maxLogL) {
 				maxLogL = logLs[noc];
 			}
@@ -904,20 +933,20 @@ public class NOCIt {
 
 		double[] like = new double[maxNOC + 1];
 		double[] likeStdErr = new double[maxNOC + 1];
-		for (int noc = 0; noc < logLs.length; noc++) {
+		for (int noc = knownGenotypes.size(); noc < logLs.length; noc++) {
 			like[noc] = FastMath.exp(logLs[noc] - maxLogL);
 			likeStdErr[noc] = FastMath.exp(logLStdErrs[noc] - maxLogL); 
 		}
 
 		double totalLike = 0.0;
 		double totalLikeVar = 0.0;
-		for (int noc = 0; noc < logLs.length; noc++) {
+		for (int noc = knownGenotypes.size(); noc < logLs.length; noc++) {
 			totalLike += like[noc];
 			totalLikeVar += likeStdErr[noc] * likeStdErr[noc];			
 		}
 
 		if (totalLikeVar < totalLike * totalLike) {
-			for (int noc = 0; noc < logLs.length; noc++) {
+			for (int noc = knownGenotypes.size(); noc < logLs.length; noc++) {
 				nocProbDist[noc] = like[noc] / totalLike;
 				nocProbStdErr[noc] = nocProbDist[noc] * FastMath.sqrt(FastMath.exp(2 * (logLStdErrs[noc] - logLs[noc]))
 						+ totalLikeVar / totalLike / totalLike 
@@ -926,7 +955,7 @@ public class NOCIt {
 			}
 		}
 		else {
-			for (int noc = 0; noc < logLs.length; noc++) {
+			for (int noc = knownGenotypes.size(); noc < logLs.length; noc++) {
 				nocProbDist[noc] = like[noc] / totalLike;				
 				nocProbStdErr[noc] = 1.0;
 				nocRefPriority[noc] = likeStdErr[noc];
@@ -944,6 +973,7 @@ public class NOCIt {
 	 *            the sample
 	 * @param maxNOC
 	 *            the max NOC
+	 * @param knownGenotypes 
 	 * @param freqTable
 	 *            the frequency table
 	 * @param analyticalThresholds
@@ -957,16 +987,19 @@ public class NOCIt {
 	 * @throws IOException
 	 *             Signals that an I/O exception has occurred.
 	 */
-	public void runNOCIt(String sampleID, Sample sample, int maxNOC, FreqTable freqTable, HashMap<Locus, Integer> analyticalThresholds, 
-			String outputFilePath, BackendController backendController)
+	public void runNOCIt(Sample sample, int maxNOC, List<Genotype> knownGenotypes, FreqTable freqTable, 
+			HashMap<Locus, Integer> analyticalThresholds, BackendController backendController)
 					throws InterruptedException, ExecutionException, IOException {
-
-		lociNotInFreqTable = new HashSet<>();
-		lociNotInCalib = new HashSet<>();
-		workingLoci = new HashSet<>();
-
-		// Inputs are collected below
 		this.maxNOC = maxNOC;
+		
+		if (knownGenotypes == null)
+			knownGenotypes = new ArrayList<>();
+		this.knownGenotypes = knownGenotypes;
+		
+		if (knownGenotypes != null && maxNOC <= knownGenotypes.size()) {
+			System.out.println("Number of contributors must be greater than the number of known contributors.");
+			return;
+		}
 		
 		System.out.println("NOC "+maxNOC);
 		System.out.println("TimeLimit "+Settings.nocItTimeLimit);
@@ -977,10 +1010,7 @@ public class NOCIt {
 		System.out.println("Loci in freqTable : " + Arrays.deepToString(freqTable.getLoci().toArray()));
 
 		// Process the sample file
-		this.sampleID = sampleID;
-		this.outputFilePath = outputFilePath;
-		
-		sample.calcQuantParams(calibration.getKit());
+		sample.calcQuantParams(calibration.getKit(), false, false);
 		sample.calcHeightDist(freqTable);
 
 		sampleFiltered = sample.isFiltered();		
@@ -988,8 +1018,6 @@ public class NOCIt {
 		sampleFileLoci = sample.getLoci();
 		quantParams = sample.getQuantParams();
 		populationName = freqTable.getName();
-		caseNumber = sample.populationCaseNumberMap.get(populationName);
-		comments = sample.populationCommentsMap.get(populationName);
 		populationFilePath = freqTable.getFilePath();
 		numPeople = freqTable.getNumPeople();
 
@@ -1025,6 +1053,7 @@ public class NOCIt {
 		}
 
 		cores = Settings.numProcessors;
+		executor = Executors.newFixedThreadPool(cores);
 
 		double startTime = System.currentTimeMillis();
 
@@ -1034,19 +1063,21 @@ public class NOCIt {
 		nocProbStdErr = new double[maxNOC + 1];
 		nocRefPriority = new double[maxNOC + 1];
 
-		// Calculate log likelihood for 0 contributors
-		double logL0 = 0.0;
-		for (Locus locus : workingLoci)
-			logL0 += probabilityModel.calcLogProbBernoulli(locus, new STRAllele[0], new double[2][0]);
+		if (knownGenotypes.size() == 0) {
+			// Calculate log likelihood for 0 contributors
+			double logL0 = 0.0;
+			for (Locus locus : workingLoci)
+				logL0 += probabilityModel.calcLogProbBernoulli(locus, new STRAllele[0], new double[2][0]);
 
-		logLs[0] = logL0;
-		logLStdErrs[0] = Double.NEGATIVE_INFINITY;
+			logLs[0] = logL0;
+			logLStdErrs[0] = Double.NEGATIVE_INFINITY;
+		}
 
 		HashMap<Integer, PriorityQueue<MCRun>> mcRunQueues = new HashMap<>();
 		HashMap<Integer, HashMap<double[][], Double>> logThetaProbMap = new HashMap<>();
 		HashMap<Integer, HashMap<double[][], Double>> logThetaProbErrVarMap = new HashMap<>();
 		int numSamples = Settings.numSamples1;
-		for (int noc = 1; noc <= maxNOC; noc++) {
+		for (int noc = Math.max(knownGenotypes.size(), 1); noc <= maxNOC; noc++) {
 			// Calculate initial estimate of log likelihood and its standard
 			// error for each n
 			mcRunQueues.put(noc, new PriorityQueue<>(Settings.thetaNumLevels - 1, new MCRunComparator()));
@@ -1064,9 +1095,8 @@ public class NOCIt {
 						int[] intTheta = new int[noc];
 
 						intTheta[0] = 1 + comb[0];
-						for (int i = 1; i < comb.length; i++) {
+						for (int i = 1; i < comb.length; i++) 
 							intTheta[i] = comb[i] - comb[i - 1];
-						}
 						intTheta[noc - 1] = Settings.thetaNumLevels - 1 - comb[noc - 2];
 
 						boolean isSorted = true;
@@ -1077,25 +1107,21 @@ public class NOCIt {
 							}
 						}
 
-						if (!isSorted) {
+						if (!isSorted) 
 							continue;
-						}
 
-						for (int i = 0; i < theta.length; i++) {
+						for (int i = 0; i < theta.length; i++) 
 							theta[i] = ((double) intTheta[i]) / Settings.thetaNumLevels;
-						}
 
 						logThetaPriorProb = CombinatoricsUtils.factorialLog(noc)
 								- CombinatoricsUtils.binomialCoefficientLog(Settings.thetaNumLevels - 1, noc - 1);
 
 						int[] intThetaCount = new int[Settings.thetaNumLevels];
-						for (int i = 0; i < intTheta.length; i++) {
-							intThetaCount[intTheta[i]]++;
-						}
+						for (int i = 0; i < intTheta.length; i++) 
+							intThetaCount[intTheta[i] - 1]++;
 
-						for (int i = 0; i < intThetaCount.length; i++) {
+						for (int i = 0; i < intThetaCount.length; i++) 
 							logThetaPriorProb -= CombinatoricsUtils.factorialLog(intThetaCount[i]);
-						}
 					} else {
 						theta[0] = 1.0;
 						logThetaPriorProb = 0.0;
@@ -1110,7 +1136,7 @@ public class NOCIt {
 
 						double logThetaProb = logThetaPriorProb - FastMath.log(relThetaParamsMap.size());
 						double log2ndMoment = 2 * (logThetaPriorProb - FastMath.log(relThetaParamsMap.size()));
-						int rfact= (int) Math.min(relThetaParamsMap.size(), 
+						int rfact = (int) Math.min(relThetaParamsMap.size(), 
 								Math.round(Math.floor(5 * Math.log10(relThetaParamsMap.size()) + 1)));
                       
 						ArrayList<MCRun> mcRunList = new ArrayList<>();
@@ -1160,26 +1186,25 @@ public class NOCIt {
 
 		// Heuristic to select noc for further sampling
 		double totalRefPriority = 0.0;
-		for (int noc = 1; noc < logLs.length; noc++) 
+		for (int noc = Math.max(knownGenotypes.size(), 1); noc < logLs.length; noc++) 
 			totalRefPriority += nocRefPriority[noc];
-
-		double rand = ThreadLocalRandom.current().nextDouble();
-		int noc = 1;
-		while (noc < maxNOC && rand > nocRefPriority[noc] / (totalRefPriority)) {
-			rand -= nocRefPriority[noc] / (totalRefPriority);
-			noc++;
-		}
-
+		
 		double maxProbStdErr = Double.NEGATIVE_INFINITY;
-		for (int i = 0; i < nocProbStdErr.length; i++) {
-			if (nocProbStdErr[i] > maxProbStdErr) {
-				maxProbStdErr = nocProbStdErr[i];
+		for (int noc = Math.max(knownGenotypes.size(), 1); noc < nocProbStdErr.length; noc++) {
+			if (nocProbStdErr[noc] > maxProbStdErr) {
+				maxProbStdErr = nocProbStdErr[noc];
 			}
 		}
 
+		double rand = ThreadLocalRandom.current().nextDouble();
+		int noc = Math.max(knownGenotypes.size(), 1);
+		while (noc < maxNOC && rand > nocRefPriority[noc] / (totalRefPriority)) {
+			rand -= nocRefPriority[noc] / (totalRefPriority);
+			noc++;
+		}	
+
 		// Continue sampling selectively until error tolerance is met
 		while (true) {
-		    Double errMax=maxProbStdErr;
 			if (maxProbStdErr < Settings.nocItStdErrorTol) {
 				exitCode = ExitCode.ERROR_TOL_REACHED;
 				break;
@@ -1192,11 +1217,9 @@ public class NOCIt {
 
 			MCRun maxErrMCRun = mcRunQueues.get(noc).poll();
 			maxErrMCRun.sample();
-            if(errMax- maxProbStdErr > Settings.nocItStdErrorTol/10 ) {
+			
 			System.out.println(noc + " " + maxProbStdErr + " " + maxErrMCRun.getErrPartialDeriv() + " "
 					+ Arrays.toString(logLs) + " " + Arrays.toString(logLStdErrs));
-					errMax=maxProbStdErr ; 
-            }
 
 			double maxErrLogThetaProb = maxErrMCRun.getLogThetaPriorProb() + maxErrMCRun.getLogMean();
 			double maxErrLog2ndMoment = 2 * maxErrMCRun.getLogThetaPriorProb() + maxErrMCRun.getLog2ndMoment();
@@ -1234,23 +1257,25 @@ public class NOCIt {
 
 			// Heuristic to select noc for further sampling
 			totalRefPriority = 0.0;
-			for (noc = 1; noc < logLs.length; noc++) 
+			for (noc = Math.max(knownGenotypes.size(), 1); noc < logLs.length; noc++) 
 				totalRefPriority += nocRefPriority[noc];
+			
+			maxProbStdErr = Double.NEGATIVE_INFINITY;
+			for (noc = Math.max(knownGenotypes.size(), 1); noc < nocProbStdErr.length; noc++) {
+				if (nocProbStdErr[noc] > maxProbStdErr) {
+					maxProbStdErr = nocProbStdErr[noc];
+				}
+			}
 
 			rand = ThreadLocalRandom.current().nextDouble();
-			noc = 1;
+			noc = Math.max(knownGenotypes.size(), 1);
 			while (noc < maxNOC && rand > nocRefPriority[noc] / (totalRefPriority)) {
 				rand -= nocRefPriority[noc] / (totalRefPriority);
 				noc++;
 			}
-
-			maxProbStdErr = Double.NEGATIVE_INFINITY;
-			for (int i = 0; i < nocProbStdErr.length; i++) {
-				if (nocProbStdErr[i] > maxProbStdErr) {
-					maxProbStdErr = nocProbStdErr[i];
-				}
-			}
 		}
+		
+		executor.shutdown();
 
 		if (backendController != null)
 			backendController.updateNOCItProgress(1.0);
@@ -1261,4 +1286,19 @@ public class NOCIt {
 		System.out.println("logLStdErrs = " + Arrays.toString(logLStdErrs));
 	}
 
+	public void setCaseNumber(String caseNumber) {
+		this.caseNumber = caseNumber;
+	}
+
+	public void setComments(String comments) {
+		this.comments = comments;
+	}
+	
+	public void setOutputFilePath(String outputFilePath) {
+		this.outputFilePath = outputFilePath;
+	}
+
+	public void setSampleID(String sampleID) {
+		this.sampleID = sampleID;
+	}
 }

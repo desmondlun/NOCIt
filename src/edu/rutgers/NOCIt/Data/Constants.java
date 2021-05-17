@@ -14,7 +14,7 @@ import java.util.List;
  * @author rcarpenter
  */
 public class Constants {
-    public static final String APPLICATION_NAME = "ValiDNA";
+    public static final String APPLICATION_NAME = "NOCIt";
     public static final String APPLICATION_VERSION = "4.0.0";
     
     public static final double TWO_PI = 2 * Math.PI;
@@ -191,9 +191,8 @@ public class Constants {
     public static final int CEESIT_TABLE_COLUMN_MIN_WIDTH = 50;
     
     // Width allows up to 3 Known Contributors to be selected without showing ellipsis (...).
-    public static final int CEESIT_TABLE_COLUMN_KNOWN_CONTRIBUTORS_COMBO_WIDTH = 110;
-    
-    public static final String CEESIT_NO_KNOWN_CONTRIBUTORS_ENTRY = "None";
+    public static final int KNOWN_CONTRIBUTORS_COMBO_WIDTH = 110;    
+    public static final String NO_KNOWN_CONTRIBUTORS_ENTRY = "None";
     
     public static final int COMMENTS_BOX_X_SIZE = 600;
     public static final int COMMENTS_BOX_Y_SIZE = 500;

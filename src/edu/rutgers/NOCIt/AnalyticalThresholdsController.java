@@ -97,7 +97,7 @@ public class AnalyticalThresholdsController implements Initializable {
         
         CSVWriter writer;
 		try {
-			writer = new CSVWriter(new FileWriter(f), ',');
+			writer = new CSVWriter(new FileWriter(f));
 			Set<Locus> keys = this.nocitController.currentThresholdData.keySet();
 	        for (Locus locus : keys) {
 	        	String line = "";

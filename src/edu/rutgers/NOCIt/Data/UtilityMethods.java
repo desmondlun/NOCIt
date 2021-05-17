@@ -212,7 +212,7 @@ public class UtilityMethods {
     		poiValue = "-" + poi;
     	}
     	String knownContributorsValue = "";
-    	if (knownContributors.length() > 0 && !knownContributors.equals(Constants.CEESIT_NO_KNOWN_CONTRIBUTORS_ENTRY)) {
+    	if (knownContributors.length() > 0 && !knownContributors.equals(Constants.NO_KNOWN_CONTRIBUTORS_ENTRY)) {
     		// It is unclear if commas are permitted in file names. It is probably better to replace
     		// commas with underscores
     		String knownContributorsCleaned = knownContributors.replace(",", "_");
